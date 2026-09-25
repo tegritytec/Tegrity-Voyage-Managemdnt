@@ -2,6 +2,7 @@
 // TEGRITY VOYAGE MANAGEMENT (TVM) — Application Controller & CRUD Engine
 // UI-UX Aligned 100% with Tegrity Intelligence Engine Console
 // Single-Row Ultra-Compact Screen-Space Optimized Filter Engine
+// Bottom Screen Section: Live Editable Detailed Data Inspector
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
@@ -41,6 +42,7 @@ export const state = {
   activeTab: 'orgs',
   activeRole: 'all',
   activeTheme: 'signal',
+  selectedEntity: null, // { category: 'vessels' | 'masters' | ..., id: '...' }
   filters: {
     org: 'ALL',
     fleetType: 'ALL',
@@ -75,6 +77,47 @@ window.setConsoleTheme = function(themeName) {
     btn.setAttribute('aria-pressed', isThis ? 'true' : 'false');
   });
 };
+
+// Selection Handler & Toast Notification
+window.selectEntity = function(category, id, autoScroll = true) {
+  state.selectedEntity = { category, id };
+  renderApp();
+  if (autoScroll) {
+    const inspector = document.getElementById('inspector-pane');
+    if (inspector) {
+      inspector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+};
+
+window.showToast = function(msg) {
+  const existing = document.querySelector('.tvm-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'tvm-toast';
+  toast.innerHTML = `<span>🟢</span> <b>${msg}</b>`;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3500);
+};
+
+function isRowSelected(category, id) {
+  return state.selectedEntity?.category === category && state.selectedEntity?.id === id;
+}
+
+function getPkKey(cat) {
+  switch(cat) {
+    case 'orgs': return 'id';
+    case 'fleets': return 'id';
+    case 'vessels': return 'imo';
+    case 'cps': return 'cpId';
+    case 'tcs': return 'contractId';
+    case 'vcs': return 'contractId';
+    case 'riders': return 'clauseId';
+    case 'masters': return 'instructionId';
+    case 'insurance': return 'policyId';
+    default: return 'id';
+  }
+}
 
 // Cascading Multi-Dimension Filter Engine
 export function getFilteredData() {
@@ -266,21 +309,56 @@ function renderFilterDropdowns() {
 }
 
 function attachEventListeners() {
-  const bindSelect = (id, key) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('change', (e) => {
-        state.filters[key] = e.target.value;
-        renderFilterDropdowns();
-        renderApp();
-      });
-    }
-  };
+  const orgEl = document.getElementById('filter-org');
+  if (orgEl) {
+    orgEl.addEventListener('change', (e) => {
+      state.filters.org = e.target.value;
+      if (e.target.value !== 'ALL') {
+        state.selectedEntity = { category: 'orgs', id: e.target.value };
+      }
+      renderFilterDropdowns();
+      renderApp();
+    });
+  }
 
-  bindSelect('filter-org', 'org');
-  bindSelect('filter-fleet', 'fleetType');
-  bindSelect('filter-ship', 'ship');
-  bindSelect('filter-contract', 'contract');
+  const fleetEl = document.getElementById('filter-fleet');
+  if (fleetEl) {
+    fleetEl.addEventListener('change', (e) => {
+      state.filters.fleetType = e.target.value;
+      if (e.target.value !== 'ALL') {
+        const fl = state.data.fleets.find(f => f.type === e.target.value);
+        if (fl) state.selectedEntity = { category: 'fleets', id: fl.id };
+      }
+      renderFilterDropdowns();
+      renderApp();
+    });
+  }
+
+  const shipEl = document.getElementById('filter-ship');
+  if (shipEl) {
+    shipEl.addEventListener('change', (e) => {
+      state.filters.ship = e.target.value;
+      if (e.target.value !== 'ALL') {
+        state.selectedEntity = { category: 'vessels', id: e.target.value };
+      }
+      renderFilterDropdowns();
+      renderApp();
+    });
+  }
+
+  const contractEl = document.getElementById('filter-contract');
+  if (contractEl) {
+    contractEl.addEventListener('change', (e) => {
+      state.filters.contract = e.target.value;
+      const val = e.target.value;
+      if (val !== 'ALL' && val !== 'TC_ONLY' && val !== 'VC_ONLY') {
+        const isTC = state.data.tcs.some(t => t.contractId === val);
+        state.selectedEntity = { category: isTC ? 'tcs' : 'vcs', id: val };
+      }
+      renderFilterDropdowns();
+      renderApp();
+    });
+  }
 
   const startDateEl = document.getElementById('filter-start-date');
   if (startDateEl) {
@@ -366,6 +444,7 @@ export function renderApp() {
   updateActiveFilterBanner();
   renderSummaryStats(filtered);
   renderActiveView(filtered);
+  renderInspectorPane(filtered);
 }
 
 // Render Tegrity Intelligence Engine Style Metric Tiles
@@ -482,7 +561,7 @@ function renderOrgView(orgs) {
         </thead>
         <tbody>
           ${orgs.length > 0 ? orgs.map(o => `
-            <tr>
+            <tr class="${isRowSelected('orgs', o.id) ? 'row-selected' : ''}" onclick="window.selectEntity('orgs', '${o.id}')">
               <td><span class="st warn">${o.code}</span></td>
               <td style="font-weight:600;color:var(--ink)">${o.name}</td>
               <td><span class="st info">${o.type}</span></td>
@@ -491,8 +570,8 @@ function renderOrgView(orgs) {
               <td><span class="st good">${o.status}</span></td>
               <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${o.createdDate}</td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openOrgModal('${o.id}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('orgs', '${o.id}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openOrgModal('${o.id}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('orgs', '${o.id}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--ink-3)">No organizations match current console filter criteria.</td></tr>'}
@@ -527,7 +606,7 @@ function renderFleetView(fleets) {
         </thead>
         <tbody>
           ${fleets.length > 0 ? fleets.map(f => `
-            <tr>
+            <tr class="${isRowSelected('fleets', f.id) ? 'row-selected' : ''}" onclick="window.selectEntity('fleets', '${f.id}')">
               <td><span class="st mute">${f.id}</span></td>
               <td style="font-weight:600;color:var(--ink)">${f.name}</td>
               <td><span class="st info">${f.type}</span></td>
@@ -535,8 +614,8 @@ function renderFleetView(fleets) {
               <td><span class="st signal">${f.vesselCount} Vessels</span></td>
               <td><span class="st good">${f.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openFleetModal('${f.id}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('fleets', '${f.id}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openFleetModal('${f.id}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('fleets', '${f.id}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ink-3)">No fleets match current console filter criteria.</td></tr>'}
@@ -573,7 +652,7 @@ function renderShipView(vessels) {
         </thead>
         <tbody>
           ${vessels.length > 0 ? vessels.map(v => `
-            <tr>
+            <tr class="${isRowSelected('vessels', v.imo) ? 'row-selected' : ''}" onclick="window.selectEntity('vessels', '${v.imo}')">
               <td class="mono" style="font-size:0.75rem;color:var(--ink-3)">${v.imo}</td>
               <td style="font-weight:600;color:var(--ink)">🚢 ${v.name}</td>
               <td><span class="st ${v.type.includes('Tanker') ? 'info' : 'warn'}">${v.type}</span></td>
@@ -583,8 +662,8 @@ function renderShipView(vessels) {
               <td>${v.owner}</td>
               <td><span class="st good">${v.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openShipModal('${v.imo}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('vessels', '${v.imo}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openShipModal('${v.imo}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('vessels', '${v.imo}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No vessels match current console filter criteria.</td></tr>'}
@@ -621,7 +700,7 @@ function renderCPView(cps) {
         </thead>
         <tbody>
           ${cps.length > 0 ? cps.map(cp => `
-            <tr>
+            <tr class="${isRowSelected('cps', cp.cpId) ? 'row-selected' : ''}" onclick="window.selectEntity('cps', '${cp.cpId}')">
               <td><span class="st warn">${cp.cpId}</span></td>
               <td style="font-weight:600;color:var(--ink)">${cp.cpForm}</td>
               <td><span class="st ${cp.charterType === 'Voyage' ? 'info' : cp.charterType === 'Time' ? 'warn' : 'good'}">${cp.charterType}</span></td>
@@ -631,8 +710,8 @@ function renderCPView(cps) {
               <td class="mono" style="color:var(--amber);font-weight:600">${cp.demurrageRate ? '$' + cp.demurrageRate.toLocaleString() + '/day' : 'N/A'}</td>
               <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${cp.claimsTimeBar}</td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openCPModal('${cp.cpId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('cps', '${cp.cpId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openCPModal('${cp.cpId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('cps', '${cp.cpId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No CP forms match current console filter criteria.</td></tr>'}
@@ -669,7 +748,7 @@ function renderTCView(tcs) {
         </thead>
         <tbody>
           ${tcs.length > 0 ? tcs.map(tc => `
-            <tr>
+            <tr class="${isRowSelected('tcs', tc.contractId) ? 'row-selected' : ''}" onclick="window.selectEntity('tcs', '${tc.contractId}')">
               <td><span class="st warn">${tc.contractId}</span></td>
               <td style="font-weight:600;color:var(--ink)">${tc.vesselName}</td>
               <td>${tc.chartererName}</td>
@@ -679,8 +758,8 @@ function renderTCView(tcs) {
               <td class="mono" style="font-size:0.72rem">${tc.expiryDate}</td>
               <td><span class="st good">${tc.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openTCModal('${tc.contractId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('tcs', '${tc.contractId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openTCModal('${tc.contractId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('tcs', '${tc.contractId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No time contracts match current console filter criteria.</td></tr>'}
@@ -717,7 +796,7 @@ function renderVCView(vcs) {
         </thead>
         <tbody>
           ${vcs.length > 0 ? vcs.map(vc => `
-            <tr>
+            <tr class="${isRowSelected('vcs', vc.contractId) ? 'row-selected' : ''}" onclick="window.selectEntity('vcs', '${vc.contractId}')">
               <td><span class="st warn">${vc.contractId}</span></td>
               <td><span class="st info">${vc.voyageNumber}</span></td>
               <td style="font-weight:600;color:var(--ink)">${vc.vesselName}</td>
@@ -727,8 +806,8 @@ function renderVCView(vcs) {
               <td class="mono" style="color:var(--cyan);font-weight:700">$${vc.freightRateUSD}/MT</td>
               <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${vc.laycanStart} to ${vc.laycanEnd}</td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openVCModal('${vc.contractId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('vcs', '${vc.contractId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openVCModal('${vc.contractId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('vcs', '${vc.contractId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No voyage contracts match current console filter criteria.</td></tr>'}
@@ -763,7 +842,7 @@ function renderRiderView(riders) {
         </thead>
         <tbody>
           ${riders.length > 0 ? riders.map(r => `
-            <tr>
+            <tr class="${isRowSelected('riders', r.clauseId) ? 'row-selected' : ''}" onclick="window.selectEntity('riders', '${r.clauseId}')">
               <td><span class="st mute">${r.clauseId}</span></td>
               <td style="font-weight:600;color:var(--ink)">${r.title}</td>
               <td><span class="st info">${r.category}</span></td>
@@ -771,8 +850,8 @@ function renderRiderView(riders) {
               <td>${r.overridesPrintedForm ? '<span class="st signal">✓ Overrides Printed Form</span>' : '<span class="st mute">Standard</span>'}</td>
               <td><span class="st good">${r.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openRiderModal('${r.clauseId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('riders', '${r.clauseId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openRiderModal('${r.clauseId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('riders', '${r.clauseId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ink-3)">No rider clauses match current console filter criteria.</td></tr>'}
@@ -809,7 +888,7 @@ function renderMasterView(masters) {
         </thead>
         <tbody>
           ${masters.length > 0 ? masters.map(m => `
-            <tr>
+            <tr class="${isRowSelected('masters', m.instructionId) ? 'row-selected' : ''}" onclick="window.selectEntity('masters', '${m.instructionId}')">
               <td><span class="st info">${m.instructionNo}</span></td>
               <td><span class="st warn">${m.contractId}</span></td>
               <td style="font-weight:600;color:var(--ink)">${m.vesselName}</td>
@@ -819,8 +898,8 @@ function renderMasterView(masters) {
               <td><span class="st ${m.priority === 'Urgent' ? 'crit' : m.priority === 'High' ? 'warn' : 'info'}">${m.priority}</span></td>
               <td><span class="st good">${m.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openMasterModal('${m.instructionId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('masters', '${m.instructionId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openMasterModal('${m.instructionId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('masters', '${m.instructionId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No master instructions match current console filter criteria.</td></tr>'}
@@ -857,7 +936,7 @@ function renderInsuranceView(insurance) {
         </thead>
         <tbody>
           ${insurance.length > 0 ? insurance.map(p => `
-            <tr>
+            <tr class="${isRowSelected('insurance', p.policyId) ? 'row-selected' : ''}" onclick="window.selectEntity('insurance', '${p.policyId}')">
               <td class="mono" style="font-size:0.75rem;color:var(--ink-3)">${p.policyNo}</td>
               <td style="font-weight:600;color:var(--ink)">${p.vesselName}</td>
               <td><span class="st ${p.policyType === 'P&I Club' ? 'good' : p.policyType === 'Hull & Machinery' ? 'warn' : 'info'}">${p.policyType}</span></td>
@@ -867,8 +946,8 @@ function renderInsuranceView(insurance) {
               <td class="mono" style="font-size:0.72rem">${p.expiryDate}</td>
               <td><span class="st good">${p.status}</span></td>
               <td>
-                <button class="btn-c btn-c-sec btn-xs" onclick="window.openInsuranceModal('${p.policyId}')">Edit</button>
-                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('insurance', '${p.policyId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="event.stopPropagation(); window.openInsuranceModal('${p.policyId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="event.stopPropagation(); window.deleteItem('insurance', '${p.policyId}')">Delete</button>
               </td>
             </tr>
           `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No insurance policies match current console filter criteria.</td></tr>'}
@@ -879,12 +958,588 @@ function renderInsuranceView(insurance) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// BOTTOM SCREEN SECTION: EDITABLE DETAILED DATA INSPECTOR ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function renderInspectorPane(filtered) {
+  const pane = document.getElementById('inspector-pane');
+  if (!pane) return;
+
+  let category = state.selectedEntity?.category;
+  let id = state.selectedEntity?.id;
+
+  const tabCategoryMap = {
+    orgs: 'orgs',
+    fleets: 'fleets',
+    ships: 'vessels',
+    charterparties: 'cps',
+    timecontracts: 'tcs',
+    voyagecontracts: 'vcs',
+    riderclauses: 'riders',
+    masterinstructions: 'masters',
+    insurance: 'insurance'
+  };
+
+  const currentTabCat = tabCategoryMap[state.activeTab] || 'vessels';
+
+  let item = null;
+  if (category && id && state.data[category]) {
+    const pk = getPkKey(category);
+    item = state.data[category].find(x => x[pk] === id);
+  }
+
+  // Fallback to first available item in current tab if none selected or category differs
+  if (!item) {
+    category = currentTabCat;
+    const items = filtered[category] && filtered[category].length > 0 ? filtered[category] : state.data[category];
+    if (items && items.length > 0) {
+      item = items[0];
+      const pk = getPkKey(category);
+      id = item[pk];
+      state.selectedEntity = { category, id };
+    }
+  }
+
+  if (!item) {
+    pane.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--ink-3)">No record selected or available for detailed inspection.</div>`;
+    return;
+  }
+
+  pane.innerHTML = getInspectorHtml(category, id, item);
+}
+
+function getInspectorHtml(category, id, item) {
+  let icon = '📝';
+  let titleText = '';
+  let subText = 'Modify field parameters below and click "Save Record Changes" to update live across all console modules.';
+  let fieldsHtml = '';
+
+  switch (category) {
+    case 'vessels': {
+      icon = '⚓';
+      titleText = `Ship Particulars & IMO Profile : ${item.name} (IMO: ${item.imo})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">IMO Number</label>
+          <input class="inspector-input mono" value="${item.imo}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Vessel Name <span class="req">*</span></label>
+          <input class="inspector-input" data-field="name" value="${item.name || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Vessel Type</label>
+          <select class="inspector-select" data-field="type">
+            <option ${item.type === 'Crude Tanker' ? 'selected' : ''}>Crude Tanker</option>
+            <option ${item.type === 'Product Tanker' ? 'selected' : ''}>Product Tanker</option>
+            <option ${item.type === 'Chemical Tanker' ? 'selected' : ''}>Chemical Tanker</option>
+            <option ${item.type === 'Capesize Bulk' ? 'selected' : ''}>Capesize Bulk</option>
+            <option ${item.type === 'Panamax Bulk' ? 'selected' : ''}>Panamax Bulk</option>
+            <option ${item.type === 'LNG Carrier' ? 'selected' : ''}>LNG Carrier</option>
+            <option ${item.type === 'Container 14000TEU' ? 'selected' : ''}>Container 14000TEU</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Flag State</label>
+          <input class="inspector-input" data-field="flag" value="${item.flag || 'Singapore'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Deadweight (DWT MT)</label>
+          <input class="inspector-input mono" type="number" data-field="dwt" value="${item.dwt || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Built Year</label>
+          <input class="inspector-input mono" type="number" data-field="builtYear" value="${item.builtYear || 2022}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Registered Owner</label>
+          <input class="inspector-input" data-field="owner" value="${item.owner || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Fleet Classification</label>
+          <select class="inspector-select" data-field="fleetType">
+            <option ${item.fleetType === 'Tanker' ? 'selected' : ''}>Tanker</option>
+            <option ${item.fleetType === 'Dry Bulk' ? 'selected' : ''}>Dry Bulk</option>
+            <option ${item.fleetType === 'Gas Carrier' ? 'selected' : ''}>Gas Carrier</option>
+            <option ${item.fleetType === 'Container' ? 'selected' : ''}>Container</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Tenant Organization</label>
+          <select class="inspector-select" data-field="organizationId">
+            ${state.data.orgs.map(o => `<option value="${o.id}" ${item.organizationId === o.id ? 'selected' : ''}>${o.code} — ${o.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Operational Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Drydock' ? 'selected' : ''}>Drydock</option>
+            <option ${item.status === 'In Maintenance' ? 'selected' : ''}>In Maintenance</option>
+            <option ${item.status === 'Laid Up' ? 'selected' : ''}>Laid Up</option>
+          </select>
+        </div>
+      `;
+      break;
+    }
+
+    case 'masters': {
+      icon = '📋';
+      titleText = `Operational Master Instruction : ${item.instructionNo} (Vessel: ${item.vesselName})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Instruction Number</label>
+          <input class="inspector-input mono" value="${item.instructionNo}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Target Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract Fixture Reference</label>
+          <input class="inspector-input mono" data-field="contractId" value="${item.contractId || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Issued To</label>
+          <input class="inspector-input" data-field="issuedTo" value="${item.issuedTo || 'Master'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Issued By</label>
+          <input class="inspector-input" data-field="issuedBy" value="${item.issuedBy || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Issue Date</label>
+          <input class="inspector-input mono" type="date" data-field="issueDate" value="${item.issueDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Priority Level</label>
+          <select class="inspector-select" data-field="priority">
+            <option ${item.priority === 'Routine' ? 'selected' : ''}>Routine</option>
+            <option ${item.priority === 'High' ? 'selected' : ''}>High</option>
+            <option ${item.priority === 'Urgent' ? 'selected' : ''}>Urgent</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Instruction Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Issued' ? 'selected' : ''}>Issued</option>
+            <option ${item.status === 'Pending Ack' ? 'selected' : ''}>Pending Ack</option>
+            <option ${item.status === 'Executing' ? 'selected' : ''}>Executing</option>
+            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
+          </select>
+        </div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Loading & Discharge Instructions</label>
+          <textarea class="inspector-textarea" data-field="loadingInstructions" rows="2">${item.loadingInstructions || ''}</textarea>
+        </div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Bunkering & Fuel Terms</label>
+          <textarea class="inspector-textarea" data-field="bunkeringInstructions" rows="2">${item.bunkeringInstructions || ''}</textarea>
+        </div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Special Clause Note</label>
+          <textarea class="inspector-textarea" data-field="specialClauseNote" rows="2">${item.specialClauseNote || ''}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'orgs': {
+      icon = '🏢';
+      titleText = `Organization Details & Multi-Tenant Boundaries : ${item.name} (${item.code})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Org ID</label>
+          <input class="inspector-input mono" value="${item.id}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Org Code <span class="req">*</span></label>
+          <input class="inspector-input mono" data-field="code" value="${item.code || ''}" required>
+        </div>
+        <div class="inspector-field span-2">
+          <label class="inspector-label">Full Organization Name <span class="req">*</span></label>
+          <input class="inspector-input" data-field="name" value="${item.name || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Business Type</label>
+          <select class="inspector-select" data-field="type">
+            <option ${item.type === 'Carrier / Ship Owner' ? 'selected' : ''}>Carrier / Ship Owner</option>
+            <option ${item.type === 'Charterer / Trader' ? 'selected' : ''}>Charterer / Trader</option>
+            <option ${item.type === 'Shipper / Cargo Interest' ? 'selected' : ''}>Shipper / Cargo Interest</option>
+            <option ${item.type === 'Port Agency & Ops' ? 'selected' : ''}>Port Agency & Ops</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Country Jurisdiction</label>
+          <input class="inspector-input" data-field="country" value="${item.country || 'Singapore'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Primary Domain</label>
+          <input class="inspector-input mono" data-field="domain" value="${item.domain || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Tenant Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+          </select>
+        </div>
+      `;
+      break;
+    }
+
+    case 'fleets': {
+      icon = '🚢';
+      titleText = `Fleet Particulars & Category Registry : ${item.name} (${item.id})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Fleet ID</label>
+          <input class="inspector-input mono" value="${item.id}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Fleet Name <span class="req">*</span></label>
+          <input class="inspector-input" data-field="name" value="${item.name || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Fleet Category Type</label>
+          <select class="inspector-select" data-field="type">
+            <option ${item.type === 'Tanker' ? 'selected' : ''}>Tanker</option>
+            <option ${item.type === 'Dry Bulk' ? 'selected' : ''}>Dry Bulk</option>
+            <option ${item.type === 'Gas Carrier' ? 'selected' : ''}>Gas Carrier</option>
+            <option ${item.type === 'Container' ? 'selected' : ''}>Container</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Fleet Designated Manager</label>
+          <input class="inspector-input" data-field="manager" value="${item.manager || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Vessel Count</label>
+          <input class="inspector-input mono" type="number" data-field="vesselCount" value="${item.vesselCount || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Organization ID</label>
+          <select class="inspector-select" data-field="organizationId">
+            ${state.data.orgs.map(o => `<option value="${o.id}" ${item.organizationId === o.id ? 'selected' : ''}>${o.code} — ${o.name}</option>`).join('')}
+          </select>
+        </div>
+      `;
+      break;
+    }
+
+    case 'cps': {
+      icon = '📑';
+      titleText = `Charter Party Form Specifications : ${item.cpForm} (${item.cpId})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">CP Code</label>
+          <input class="inspector-input mono" value="${item.cpId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Standard Form Name <span class="req">*</span></label>
+          <input class="inspector-input" data-field="cpForm" value="${item.cpForm || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charter Type</label>
+          <select class="inspector-select" data-field="charterType">
+            <option ${item.charterType === 'Voyage' ? 'selected' : ''}>Voyage</option>
+            <option ${item.charterType === 'Time' ? 'selected' : ''}>Time</option>
+            <option ${item.charterType === 'Bareboat' ? 'selected' : ''}>Bareboat</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Principal</label>
+          <input class="inspector-input" data-field="charterer" value="${item.charterer || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Demurrage Rate ($/Day)</label>
+          <input class="inspector-input mono" type="number" data-field="demurrageRate" value="${item.demurrageRate || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laytime Terms</label>
+          <input class="inspector-input" data-field="laytimeTerms" value="${item.laytimeTerms || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Governing Law Jurisdiction</label>
+          <input class="inspector-input" data-field="governingLaw" value="${item.governingLaw || 'English Law'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Claims Time Bar</label>
+          <input class="inspector-input" data-field="claimsTimeBar" value="${item.claimsTimeBar || ''}">
+        </div>
+      `;
+      break;
+    }
+
+    case 'tcs': {
+      icon = '⏱️';
+      titleText = `Time Contract Fixture Details : ${item.contractId} (${item.vesselName})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Contract ID</label>
+          <input class="inspector-input mono" value="${item.contractId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Time Chartered Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Name</label>
+          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Daily Hire Rate ($/Day)</label>
+          <input class="inspector-input mono" type="number" data-field="hireRatePerDay" value="${item.hireRatePerDay || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Delivery Port</label>
+          <input class="inspector-input" data-field="deliveryPort" value="${item.deliveryPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Redelivery Port / Range</label>
+          <input class="inspector-input" data-field="redeliveryPort" value="${item.redeliveryPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Commence Date</label>
+          <input class="inspector-input mono" type="date" data-field="commenceDate" value="${item.commenceDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Expiry Date</label>
+          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option ${item.status === 'Terminated' ? 'selected' : ''}>Terminated</option>
+          </select>
+        </div>
+      `;
+      break;
+    }
+
+    case 'vcs': {
+      icon = '📜';
+      titleText = `Voyage Contract Fixture Details : ${item.contractId} (Voyage: ${item.voyageNumber})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Contract ID</label>
+          <input class="inspector-input mono" value="${item.contractId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Voyage Number</label>
+          <input class="inspector-input mono" data-field="voyageNumber" value="${item.voyageNumber || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Assigned Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Name</label>
+          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Load Port</label>
+          <input class="inspector-input" data-field="loadPort" value="${item.loadPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Discharge Port</label>
+          <input class="inspector-input" data-field="dischargePort" value="${item.dischargePort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Cargo Type</label>
+          <input class="inspector-input" data-field="cargoType" value="${item.cargoType || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Cargo Quantity (MT)</label>
+          <input class="inspector-input mono" type="number" data-field="quantityMT" value="${item.quantityMT || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Freight Rate ($/MT)</label>
+          <input class="inspector-input mono" type="number" data-field="freightRateUSD" value="${item.freightRateUSD || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laycan Start</label>
+          <input class="inspector-input mono" type="date" data-field="laycanStart" value="${item.laycanStart || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laycan End</label>
+          <input class="inspector-input mono" type="date" data-field="laycanEnd" value="${item.laycanEnd || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Voyage Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option ${item.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+        </div>
+      `;
+      break;
+    }
+
+    case 'riders': {
+      icon = '✒️';
+      titleText = `Rider Clause Specification : ${item.title} (${item.clauseId})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Clause ID</label>
+          <input class="inspector-input mono" value="${item.clauseId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Clause Title <span class="req">*</span></label>
+          <input class="inspector-input" data-field="title" value="${item.title || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Category</label>
+          <input class="inspector-input" data-field="category" value="${item.category || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Associated Contract Ref</label>
+          <input class="inspector-input mono" data-field="associatedContractId" value="${item.associatedContractId || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Precedence Status</label>
+          <select class="inspector-select" data-field="overridesPrintedForm">
+            <option value="true" ${item.overridesPrintedForm ? 'selected' : ''}>✓ Overrides Printed Form</option>
+            <option value="false" ${!item.overridesPrintedForm ? 'selected' : ''}>Standard Form Precedence</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Clause Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Archived' ? 'selected' : ''}>Archived</option>
+          </select>
+        </div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Full Rider Clause Legal Text</label>
+          <textarea class="inspector-textarea" data-field="riderText" rows="3">${item.riderText || ''}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'insurance': {
+      icon = '🛡️';
+      titleText = `Marine Insurance Policy Details : ${item.policyNo} (${item.vesselName})`;
+      fieldsHtml = `
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Number</label>
+          <input class="inspector-input mono" value="${item.policyNo}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insured Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Type</label>
+          <select class="inspector-select" data-field="policyType">
+            <option ${item.policyType === 'P&I Club' ? 'selected' : ''}>P&I Club</option>
+            <option ${item.policyType === 'Hull & Machinery' ? 'selected' : ''}>Hull & Machinery</option>
+            <option ${item.policyType === 'War Risk' ? 'selected' : ''}>War Risk</option>
+            <option ${item.policyType === 'Loss of Hire' ? 'selected' : ''}>Loss of Hire</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insurer / P&I Club Name</label>
+          <input class="inspector-input" data-field="insurer" value="${item.insurer || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insured Limit</label>
+          <input class="inspector-input mono" data-field="insuredLimit" value="${item.insuredLimit || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Deductible</label>
+          <input class="inspector-input mono" data-field="deductible" value="${item.deductible || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Expiry Date</label>
+          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Pending Renewal' ? 'selected' : ''}>Pending Renewal</option>
+            <option ${item.status === 'Expired' ? 'selected' : ''}>Expired</option>
+          </select>
+        </div>
+      `;
+      break;
+    }
+  }
+
+  return `
+    <form onsubmit="window.saveInspectorData(event, '${category}', '${id}')">
+      <div class="inspector-h">
+        <div class="inspector-title-group">
+          <div class="inspector-icon">${icon}</div>
+          <div>
+            <div class="inspector-title">
+              ${titleText}
+              <span class="st good" style="font-size:0.58rem">${item.status || 'Active'}</span>
+            </div>
+            <div class="inspector-sub">${subText}</div>
+          </div>
+        </div>
+        <div class="inspector-actions">
+          <button type="submit" class="btn-c btn-c-primary btn-sm">💾 SAVE RECORD CHANGES</button>
+          <button type="button" class="btn-c btn-c-sec btn-sm" onclick="window.renderApp()">🔄 RESET</button>
+        </div>
+      </div>
+      <div class="inspector-grid">
+        ${fieldsHtml}
+      </div>
+    </form>
+  `;
+}
+
+window.saveInspectorData = function(e, category, id) {
+  e.preventDefault();
+  const form = e.target;
+  const pk = getPkKey(category);
+  const idx = state.data[category].findIndex(x => x[pk] === id);
+  if (idx === -1) return;
+
+  const current = state.data[category][idx];
+  const updated = { ...current };
+
+  form.querySelectorAll('[data-field]').forEach(input => {
+    const field = input.dataset.field;
+    let val = input.value;
+    if (input.type === 'number') val = parseFloat(val) || 0;
+    if (field === 'overridesPrintedForm') val = val === 'true';
+    updated[field] = val;
+  });
+
+  if (updated.vesselImo) {
+    const v = state.data.vessels.find(x => x.imo === updated.vesselImo);
+    if (v) updated.vesselName = v.name;
+  }
+
+  state.data[category][idx] = updated;
+  saveState(category);
+  window.showToast(`Saved changes for ${id}`);
+  renderApp();
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CRUD MODALS ENGINE & BLADE DIALOG HANDLERS (INTELLIGENCE ENGINE FORMAT)
 // ═══════════════════════════════════════════════════════════════════════════
 
 window.deleteItem = function(entityKey, id) {
   if (confirm(`Are you sure you want to delete this record (${id})?`)) {
-    const pk = entityKey === 'orgs' ? 'id' : entityKey === 'fleets' ? 'id' : entityKey === 'vessels' ? 'imo' : entityKey === 'cps' ? 'cpId' : entityKey === 'tcs' ? 'contractId' : entityKey === 'vcs' ? 'contractId' : entityKey === 'riders' ? 'clauseId' : entityKey === 'masters' ? 'instructionId' : 'policyId';
+    const pk = getPkKey(entityKey);
     state.data[entityKey] = state.data[entityKey].filter(item => item[pk] !== id);
     saveState(entityKey);
     renderApp();
