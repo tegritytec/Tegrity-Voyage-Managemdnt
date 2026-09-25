@@ -26,31 +26,31 @@
       <!-- MAIN NAVIGATION TABS FOR THE 9 CAPABILITIES -->
       <nav class="console-nav" id="console-nav">
         <button class="c-nav-btn active" data-tab="orgs">
-          <span>🏢</span> Organization Mgmt
+          <span>🏢</span> Org Mgmt
         </button>
         <button class="c-nav-btn" data-tab="fleets">
-          <span>🚢</span> Fleet Management
+          <span>🚢</span> Fleets
         </button>
         <button class="c-nav-btn" data-tab="ships">
-          <span>⚓</span> Ship Management
+          <span>⚓</span> Ships
         </button>
         <button class="c-nav-btn" data-tab="charterparties">
-          <span>📑</span> Charter Party Mgmt
+          <span>📑</span> CP Forms
         </button>
         <button class="c-nav-btn" data-tab="timecontracts">
-          <span>⏱️</span> Time Contract Mgmt
+          <span>⏱️</span> Time Fixtures
         </button>
         <button class="c-nav-btn" data-tab="voyagecontracts">
-          <span>📜</span> Voyage Contract Mgmt
+          <span>📜</span> Voyage Fixtures
         </button>
         <button class="c-nav-btn" data-tab="riderclauses">
-          <span>✒️</span> Rider Clause Mgmt
+          <span>✒️</span> Rider Clauses
         </button>
         <button class="c-nav-btn" data-tab="masterinstructions">
-          <span>📋</span> Master Instruction
+          <span>📋</span> Master Ops
         </button>
         <button class="c-nav-btn" data-tab="insurance">
-          <span>🛡️</span> Insurance Management
+          <span>🛡️</span> Insurance
         </button>
       </nav>
 
@@ -65,9 +65,7 @@
           <div class="av">AD</div>
           <div class="who">
             <b>Admin User</b>
-            <span>TegrityTec Ops</span>
           </div>
-          <div class="score">99.4%</div>
         </div>
 
         <!-- Theme Picker -->
@@ -81,73 +79,64 @@
       </div>
     </header>
 
-    <!-- ROLE PERSPECTIVE STRIP -->
-    <div class="role-bar-strip">
-      <div class="role-bar-left">
-        <span class="role-label">Role Perspective:</span>
-        <div class="role-chips" id="role-chips">
-          <div class="role-chip active" data-role="all">ALL ROLES</div>
-          <div class="role-chip" data-role="owner">SHIP OWNER</div>
-          <div class="role-chip" data-role="charterer">CHARTERER</div>
-          <div class="role-chip" data-role="master">MASTER</div>
-          <div class="role-chip" data-role="ops_manager">OPS MANAGER</div>
-          <div class="role-chip" data-role="underwriter">INSURER</div>
-        </div>
-      </div>
-
-      <div class="sync-status">
-        <div class="sync-dot"></div>
-        <span>INTELLIGENCE ENGINE SYNCED</span>
-      </div>
-    </div>
-
-    <!-- CONSOLE OPERATIONAL FILTER BAR -->
-    <div class="filter-console">
-      <div class="filter-grid">
-        <div class="f-item">
-          <label>🏢 Organization</label>
-          <select id="filter-org" class="c-select">
-            <option value="ALL">All Organizations</option>
+    <!-- OPTIMIZED ULTRA-COMPACT SINGLE-ROW OPERATIONAL FILTER TOOLBAR -->
+    <div class="filter-console-strip">
+      <div class="filter-group-row">
+        <div class="f-inline">
+          <label>🏢 ORG:</label>
+          <select id="filter-org" class="c-select-xs" style="max-width:130px">
+            <option value="ALL">All Orgs</option>
           </select>
         </div>
 
-        <div class="f-item">
-          <label>🚢 Fleet Type</label>
-          <select id="filter-fleet" class="c-select">
+        <div class="f-inline">
+          <label>🚢 FLEET:</label>
+          <select id="filter-fleet" class="c-select-xs" style="max-width:110px">
             <option value="ALL">All Fleets</option>
           </select>
         </div>
 
-        <div class="f-item">
-          <label>⚓ Ship / Vessel</label>
-          <select id="filter-ship" class="c-select">
-            <option value="ALL">All Vessels</option>
+        <div class="f-inline">
+          <label>⚓ SHIP:</label>
+          <select id="filter-ship" class="c-select-xs" style="max-width:130px">
+            <option value="ALL">All Ships</option>
           </select>
         </div>
 
-        <div class="f-item">
-          <label>📜 Contract Fixture</label>
-          <select id="filter-contract" class="c-select">
-            <option value="ALL">All Contracts (TC & VC)</option>
+        <div class="f-inline">
+          <label>📜 FIXTURE:</label>
+          <select id="filter-contract" class="c-select-xs" style="max-width:150px">
+            <option value="ALL">All Contracts</option>
           </select>
         </div>
 
-        <div class="f-item">
-          <label>📅 Date From</label>
-          <input type="date" id="filter-start-date" class="c-input">
+        <div class="f-inline">
+          <label>📅 FROM:</label>
+          <input type="date" id="filter-start-date" class="c-input-xs" style="width:115px">
         </div>
 
-        <div class="f-item">
-          <label>📅 Date To</label>
-          <input type="date" id="filter-end-date" class="c-input">
+        <div class="f-inline">
+          <label>📅 TO:</label>
+          <input type="date" id="filter-end-date" class="c-input-xs" style="width:115px">
         </div>
 
-        <button id="btn-clear-filters" class="btn-reset-filter">🧹 CLEAR FILTERS</button>
+        <button id="btn-clear-filters" class="btn-reset-xs">🧹 CLEAR</button>
       </div>
 
-      <div class="active-filter-bar" id="active-filter-banner">
-        <span id="active-filter-text">Showing All Console Data (No Active Scoping Filters)</span>
-        <button class="btn-c btn-c-sec btn-xs" id="btn-clear-banner">Clear Scope</button>
+      <!-- Role Perspective Chips Inline -->
+      <div class="role-chips-inline" id="role-chips">
+        <div class="role-chip-xs active" data-role="all">ALL</div>
+        <div class="role-chip-xs" data-role="owner">OWNER</div>
+        <div class="role-chip-xs" data-role="charterer">CHARTERER</div>
+        <div class="role-chip-xs" data-role="master">MASTER</div>
+        <div class="role-chip-xs" data-role="ops_manager">OPS</div>
+        <div class="role-chip-xs" data-role="underwriter">INSURER</div>
+      </div>
+
+      <!-- Inline Active Scope Badge -->
+      <div class="active-scope-badge" id="active-filter-banner">
+        <span id="active-filter-text">Scope: All Data</span>
+        <button class="btn-c btn-c-sec btn-xs" id="btn-clear-banner" style="padding:0 3px">✕</button>
       </div>
     </div>
 
@@ -156,7 +145,7 @@
       <!-- Rail Header -->
       <div class="rail-h">
         <h2 id="rail-title">OPERATIONAL METRIC TILES</h2>
-        <span class="n" id="rail-count">0 TILES ACTIVE</span>
+        <span class="n" id="rail-count">5 TILES ACTIVE</span>
         <div class="line"></div>
       </div>
 
