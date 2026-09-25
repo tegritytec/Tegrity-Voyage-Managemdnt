@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // TEGRITY VOYAGE MANAGEMENT (TVM) — Application Controller & CRUD Engine
-// Enhanced Cascading Real-Time Operational Filter Engine
+// UI-UX Aligned 100% with Tegrity Intelligence Engine Console
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
@@ -39,6 +39,7 @@ function loadState(key, fallback) {
 export const state = {
   activeTab: 'orgs',
   activeRole: 'all',
+  activeTheme: 'signal',
   filters: {
     org: 'ALL',
     fleetType: 'ALL',
@@ -64,6 +65,16 @@ function saveState(entityKey) {
   localStorage.setItem(STORAGE_KEYS[entityKey], JSON.stringify(state.data[entityKey]));
 }
 
+// Global Theme Switcher Handler
+window.setConsoleTheme = function(themeName) {
+  state.activeTheme = themeName;
+  document.body.className = `env-${themeName}`;
+  document.querySelectorAll('.envpick button').forEach(btn => {
+    const isThis = btn.getAttribute('onclick').includes(themeName);
+    btn.setAttribute('aria-pressed', isThis ? 'true' : 'false');
+  });
+};
+
 // Cascading Multi-Dimension Filter Engine
 export function getFilteredData() {
   const f = state.filters;
@@ -81,8 +92,6 @@ export function getFilteredData() {
     if (f.org !== 'ALL' && v.organizationId !== f.org) return false;
     if (f.fleetType !== 'ALL' && v.fleetType !== f.fleetType) return false;
     if (f.ship !== 'ALL' && v.imo !== f.ship && v.name !== f.ship) return false;
-    
-    // Role filter
     if (role === 'owner' && !v.owner.includes('TegrityTec')) return false;
     return true;
   });
@@ -193,14 +202,12 @@ export function initApp() {
   renderApp();
 }
 
-// Render dynamic cascading select options
 function renderFilterDropdowns() {
   const orgSelect = document.getElementById('filter-org');
   const fleetSelect = document.getElementById('filter-fleet');
   const shipSelect = document.getElementById('filter-ship');
   const contractSelect = document.getElementById('filter-contract');
 
-  // Currently selected values
   const currOrg = state.filters.org;
   const currFleet = state.filters.fleetType;
   const currShip = state.filters.ship;
@@ -280,19 +287,11 @@ function attachEventListeners() {
       state.filters.dateFrom = e.target.value;
       renderApp();
     });
-    startDateEl.addEventListener('input', (e) => {
-      state.filters.dateFrom = e.target.value;
-      renderApp();
-    });
   }
 
   const endDateEl = document.getElementById('filter-end-date');
   if (endDateEl) {
     endDateEl.addEventListener('change', (e) => {
-      state.filters.dateTo = e.target.value;
-      renderApp();
-    });
-    endDateEl.addEventListener('input', (e) => {
       state.filters.dateTo = e.target.value;
       renderApp();
     });
@@ -314,9 +313,9 @@ function attachEventListeners() {
   document.getElementById('btn-clear-banner')?.addEventListener('click', clearFn);
 
   // Top Nav Tab switching
-  document.querySelectorAll('.tvm-nav-btn').forEach(btn => {
+  document.querySelectorAll('.c-nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.tvm-nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.c-nav-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.activeTab = btn.dataset.tab;
       renderApp();
@@ -355,9 +354,9 @@ function updateActiveFilterBanner() {
   if (state.activeRole !== 'all') activeParts.push(`Role Scope: ${state.activeRole.toUpperCase()}`);
 
   if (activeParts.length === 0) {
-    bannerText.textContent = 'Showing All Platform Data (No Active Filters)';
+    bannerText.textContent = 'Showing All Console Data (No Active Scoping Filters)';
   } else {
-    bannerText.textContent = `🔍 Active Filter Scoped: ${activeParts.join(' | ')}`;
+    bannerText.textContent = `🔍 Active Console Scope: ${activeParts.join(' | ')}`;
   }
 }
 
@@ -368,35 +367,72 @@ export function renderApp() {
   renderActiveView(filtered);
 }
 
+// Render Tegrity Intelligence Engine Style Metric Tiles
 function renderSummaryStats(filtered) {
   const statsContainer = document.getElementById('summary-stats');
+  const readoutTotal = document.getElementById('readout-total-scoped');
+  const railCount = document.getElementById('rail-count');
+
+  const totalScoped = filtered.orgs.length + filtered.vessels.length + filtered.tcs.length + filtered.vcs.length + filtered.insurance.length;
+  if (readoutTotal) readoutTotal.textContent = totalScoped;
+  if (railCount) railCount.textContent = `5 METRIC TILES ACTIVE`;
+
   if (!statsContainer) return;
 
   statsContainer.innerHTML = `
-    <div class="stat-card amber">
-      <div class="stat-title">Organizations</div>
-      <div class="stat-value">${filtered.orgs.length}</div>
-      <div class="stat-sub">${filtered.orgs.length} of ${state.data.orgs.length} Active Tenants</div>
+    <div class="tile">
+      <div class="t-top">
+        <div class="t-ico">🏢</div>
+        <span class="pip live dot">LIVE TENANTS</span>
+      </div>
+      <div class="t-big">${filtered.orgs.length}</div>
+      <div class="t-lab">ORGANIZATIONS</div>
+      <div class="t-sub">${filtered.orgs.length} of ${state.data.orgs.length} Active Tenants</div>
+      <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
     </div>
-    <div class="stat-card">
-      <div class="stat-title">Fleets & Vessels</div>
-      <div class="stat-value">${filtered.fleets.length} / ${filtered.vessels.length}</div>
-      <div class="stat-sub">${filtered.vessels.length} Ships Scoped (${state.data.vessels.length} Total)</div>
+
+    <div class="tile">
+      <div class="t-top">
+        <div class="t-ico">⚓</div>
+        <span class="pip info">FLEET & SHIPS</span>
+      </div>
+      <div class="t-big">${filtered.fleets.length} / ${filtered.vessels.length}</div>
+      <div class="t-lab">FLEETS & VESSELS</div>
+      <div class="t-sub">${filtered.vessels.length} Ships Scoped (${state.data.vessels.length} Total)</div>
+      <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
     </div>
-    <div class="stat-card purple">
-      <div class="stat-title">Active Contracts</div>
-      <div class="stat-value">${filtered.tcs.length + filtered.vcs.length}</div>
-      <div class="stat-sub">${filtered.tcs.length} Time · ${filtered.vcs.length} Voyage</div>
+
+    <div class="tile">
+      <div class="t-top">
+        <div class="t-ico">📜</div>
+        <span class="pip warn">ACTIVE FIXTURES</span>
+      </div>
+      <div class="t-big">${filtered.tcs.length + filtered.vcs.length}</div>
+      <div class="t-lab">CONTRACT FIXTURES</div>
+      <div class="t-sub">${filtered.tcs.length} Time · ${filtered.vcs.length} Voyage Fixtures</div>
+      <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
     </div>
-    <div class="stat-card blue">
-      <div class="stat-title">Rider Clauses</div>
-      <div class="stat-value">${filtered.riders.length}</div>
-      <div class="stat-sub">Precedence Overrides</div>
+
+    <div class="tile">
+      <div class="t-top">
+        <div class="t-ico">✒️</div>
+        <span class="pip live">PRECEDENCE</span>
+      </div>
+      <div class="t-big">${filtered.riders.length}</div>
+      <div class="t-lab">RIDER CLAUSES</div>
+      <div class="t-sub">${filtered.riders.length} Active Overrides</div>
+      <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
     </div>
-    <div class="stat-card emerald">
-      <div class="stat-title">Insurance & Master Ops</div>
-      <div class="stat-value">${filtered.insurance.length} / ${filtered.masters.length}</div>
-      <div class="stat-sub">Policies / Active Instructions</div>
+
+    <div class="tile">
+      <div class="t-top">
+        <div class="t-ico">🛡️</div>
+        <span class="pip ok">RISK & INSURANCE</span>
+      </div>
+      <div class="t-big">${filtered.insurance.length} / ${filtered.masters.length}</div>
+      <div class="t-lab">POLICIES & MASTER OPS</div>
+      <div class="t-sub">P&I Policies / Active Master Instructions</div>
+      <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
     </div>
   `;
 }
@@ -422,15 +458,15 @@ function renderActiveView(filtered) {
 // ── 1. ORGANIZATION MANAGEMENT ──
 function renderOrgView(orgs) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">🏢 Organization Directory & Multi-Tenant Boundaries</div>
-          <div class="card-sub-text">Showing ${orgs.length} of ${state.data.orgs.length} Organizations · Multi-tenant domain scoping</div>
+          <div class="sub-h-title">🏢 Organization Directory & Multi-Tenant Boundaries</div>
+          <div class="sub-h-sub">Showing ${orgs.length} of ${state.data.orgs.length} Organizations · Multi-tenant domain authorization</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openOrgModal()">+ Add Organization</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openOrgModal()">+ Add Organization</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Code</th>
@@ -446,19 +482,19 @@ function renderOrgView(orgs) {
         <tbody>
           ${orgs.length > 0 ? orgs.map(o => `
             <tr>
-              <td><span class="badge-tag badge-amber">${o.code}</span></td>
-              <td style="font-weight:600;color:#fff">${o.name}</td>
-              <td><span class="badge-tag badge-cyan">${o.type}</span></td>
+              <td><span class="st warn">${o.code}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${o.name}</td>
+              <td><span class="st info">${o.type}</span></td>
               <td>${o.country}</td>
-              <td style="font-family:var(--font-mono);font-size:0.75rem">${o.domain}</td>
-              <td><span class="badge-tag badge-emerald">${o.status}</span></td>
-              <td style="font-size:0.75rem;color:var(--text-muted)">${o.createdDate}</td>
+              <td class="mono" style="font-size:0.75rem">${o.domain}</td>
+              <td><span class="st good">${o.status}</span></td>
+              <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${o.createdDate}</td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openOrgModal('${o.id}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('orgs', '${o.id}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openOrgModal('${o.id}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('orgs', '${o.id}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">No organizations match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--ink-3)">No organizations match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -468,15 +504,15 @@ function renderOrgView(orgs) {
 // ── 2. FLEET MANAGEMENT ──
 function renderFleetView(fleets) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">🚢 Fleet Management & Category Registry</div>
-          <div class="card-sub-text">Showing ${fleets.length} of ${state.data.fleets.length} Fleets · Category classification & manager assignments</div>
+          <div class="sub-h-title">🚢 Fleet Management & Category Registry</div>
+          <div class="sub-h-sub">Showing ${fleets.length} of ${state.data.fleets.length} Fleets · Category classification & manager assignments</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openFleetModal()">+ Add Fleet</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openFleetModal()">+ Add Fleet</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Fleet ID</th>
@@ -491,18 +527,18 @@ function renderFleetView(fleets) {
         <tbody>
           ${fleets.length > 0 ? fleets.map(f => `
             <tr>
-              <td><span class="badge-tag badge-gray">${f.id}</span></td>
-              <td style="font-weight:600;color:#fff">${f.name}</td>
-              <td><span class="badge-tag badge-blue">${f.type}</span></td>
+              <td><span class="st mute">${f.id}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${f.name}</td>
+              <td><span class="st info">${f.type}</span></td>
               <td>${f.manager}</td>
-              <td><span class="badge-tag badge-cyan">${f.vesselCount} Vessels</span></td>
-              <td><span class="badge-tag badge-emerald">${f.status}</span></td>
+              <td><span class="st signal">${f.vesselCount} Vessels</span></td>
+              <td><span class="st good">${f.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openFleetModal('${f.id}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('fleets', '${f.id}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openFleetModal('${f.id}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('fleets', '${f.id}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No fleets match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ink-3)">No fleets match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -512,15 +548,15 @@ function renderFleetView(fleets) {
 // ── 3. SHIP MANAGEMENT (VESSEL REGISTRY) ──
 function renderShipView(vessels) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">⚓ Ship Management & IMO Vessel Profiles</div>
-          <div class="card-sub-text">Showing ${vessels.length} of ${state.data.vessels.length} Ships · Particulars, flag states, and dwt capacity</div>
+          <div class="sub-h-title">⚓ Ship Management & IMO Vessel Profiles</div>
+          <div class="sub-h-sub">Showing ${vessels.length} of ${state.data.vessels.length} Ships · Particulars, flag states, and dwt capacity</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openShipModal()">+ Register Ship</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openShipModal()">+ Register Ship</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>IMO</th>
@@ -537,20 +573,20 @@ function renderShipView(vessels) {
         <tbody>
           ${vessels.length > 0 ? vessels.map(v => `
             <tr>
-              <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted)">${v.imo}</td>
-              <td style="font-weight:600;color:#fff">🚢 ${v.name}</td>
-              <td><span class="badge-tag badge-${v.type.includes('Tanker') ? 'cyan' : 'purple'}">${v.type}</span></td>
+              <td class="mono" style="font-size:0.75rem;color:var(--ink-3)">${v.imo}</td>
+              <td style="font-weight:600;color:var(--ink)">🚢 ${v.name}</td>
+              <td><span class="st ${v.type.includes('Tanker') ? 'info' : 'warn'}">${v.type}</span></td>
               <td>${v.flag}</td>
-              <td>${v.dwt ? v.dwt.toLocaleString() : 0} MT</td>
-              <td>${v.builtYear || 2022}</td>
+              <td class="mono">${v.dwt ? v.dwt.toLocaleString() : 0} MT</td>
+              <td class="mono">${v.builtYear || 2022}</td>
               <td>${v.owner}</td>
-              <td><span class="badge-tag badge-emerald">${v.status}</span></td>
+              <td><span class="st good">${v.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openShipModal('${v.imo}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('vessels', '${v.imo}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openShipModal('${v.imo}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('vessels', '${v.imo}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No vessels match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No vessels match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -560,15 +596,15 @@ function renderShipView(vessels) {
 // ── 4. CHARTER PARTY MANAGEMENT ──
 function renderCPView(cps) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">📑 Charter Party Management</div>
-          <div class="card-sub-text">Showing ${cps.length} Charterparty Forms · Standard forms, laytime terms, and demurrage rates</div>
+          <div class="sub-h-title">📑 Charter Party Management</div>
+          <div class="sub-h-sub">Showing ${cps.length} Charterparty Forms · Standard forms, laytime terms, and demurrage rates</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openCPModal()">+ Add CP Form</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openCPModal()">+ Add CP Form</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>CP Code</th>
@@ -585,20 +621,20 @@ function renderCPView(cps) {
         <tbody>
           ${cps.length > 0 ? cps.map(cp => `
             <tr>
-              <td><span class="badge-tag badge-amber">${cp.cpId}</span></td>
-              <td style="font-weight:600;color:#fff">${cp.cpForm}</td>
-              <td><span class="badge-tag badge-${cp.charterType === 'Voyage' ? 'blue' : cp.charterType === 'Time' ? 'amber' : 'purple'}">${cp.charterType}</span></td>
+              <td><span class="st warn">${cp.cpId}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${cp.cpForm}</td>
+              <td><span class="st ${cp.charterType === 'Voyage' ? 'info' : cp.charterType === 'Time' ? 'warn' : 'good'}">${cp.charterType}</span></td>
               <td>${cp.charterer}</td>
               <td>${cp.governingLaw}</td>
               <td>${cp.laytimeTerms}</td>
-              <td style="color:var(--accent-amber);font-weight:600">${cp.demurrageRate ? '$' + cp.demurrageRate.toLocaleString() + '/day' : 'N/A'}</td>
-              <td style="font-size:0.75rem;color:var(--text-muted)">${cp.claimsTimeBar}</td>
+              <td class="mono" style="color:var(--amber);font-weight:600">${cp.demurrageRate ? '$' + cp.demurrageRate.toLocaleString() + '/day' : 'N/A'}</td>
+              <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${cp.claimsTimeBar}</td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openCPModal('${cp.cpId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('cps', '${cp.cpId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openCPModal('${cp.cpId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('cps', '${cp.cpId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No CP forms match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No CP forms match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -608,15 +644,15 @@ function renderCPView(cps) {
 // ── 5. TIME CONTRACT MANAGEMENT ──
 function renderTCView(tcs) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">⏱️ Time Contract Management</div>
-          <div class="card-sub-text">Showing ${tcs.length} of ${state.data.tcs.length} Time Contracts · Daily hire rates and delivery terms</div>
+          <div class="sub-h-title">⏱️ Time Contract Management</div>
+          <div class="sub-h-sub">Showing ${tcs.length} of ${state.data.tcs.length} Time Contracts · Daily hire rates and delivery terms</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openTCModal()">+ Create Time Contract</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openTCModal()">+ Create Time Contract</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Contract ID</th>
@@ -633,20 +669,20 @@ function renderTCView(tcs) {
         <tbody>
           ${tcs.length > 0 ? tcs.map(tc => `
             <tr>
-              <td><span class="badge-tag badge-amber">${tc.contractId}</span></td>
-              <td style="font-weight:600;color:#fff">${tc.vesselName}</td>
+              <td><span class="st warn">${tc.contractId}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${tc.vesselName}</td>
               <td>${tc.chartererName}</td>
-              <td style="color:var(--accent-cyan);font-weight:700">$${tc.hireRatePerDay.toLocaleString()}/day</td>
+              <td class="mono" style="color:var(--signal);font-weight:700">$${tc.hireRatePerDay.toLocaleString()}/day</td>
               <td>${tc.deliveryPort}</td>
-              <td style="font-size:0.75rem">${tc.commenceDate}</td>
-              <td style="font-size:0.75rem">${tc.expiryDate}</td>
-              <td><span class="badge-tag badge-emerald">${tc.status}</span></td>
+              <td class="mono" style="font-size:0.72rem">${tc.commenceDate}</td>
+              <td class="mono" style="font-size:0.72rem">${tc.expiryDate}</td>
+              <td><span class="st good">${tc.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openTCModal('${tc.contractId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('tcs', '${tc.contractId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openTCModal('${tc.contractId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('tcs', '${tc.contractId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No time contracts match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No time contracts match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -656,15 +692,15 @@ function renderTCView(tcs) {
 // ── 6. VOYAGE CONTRACT MANAGEMENT ──
 function renderVCView(vcs) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">📜 Voyage Contract Management</div>
-          <div class="card-sub-text">Showing ${vcs.length} of ${state.data.vcs.length} Voyage Contracts · Freight rates and laycans</div>
+          <div class="sub-h-title">📜 Voyage Contract Management</div>
+          <div class="sub-h-sub">Showing ${vcs.length} of ${state.data.vcs.length} Voyage Contracts · Freight rates and laycans</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openVCModal()">+ Create Voyage Contract</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openVCModal()">+ Create Voyage Contract</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Contract ID</th>
@@ -681,20 +717,20 @@ function renderVCView(vcs) {
         <tbody>
           ${vcs.length > 0 ? vcs.map(vc => `
             <tr>
-              <td><span class="badge-tag badge-amber">${vc.contractId}</span></td>
-              <td><span class="badge-tag badge-cyan">${vc.voyageNumber}</span></td>
-              <td style="font-weight:600;color:#fff">${vc.vesselName}</td>
+              <td><span class="st warn">${vc.contractId}</span></td>
+              <td><span class="st info">${vc.voyageNumber}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${vc.vesselName}</td>
               <td>${vc.chartererName}</td>
-              <td style="font-size:0.78rem">${vc.loadPort} → ${vc.dischargePort}</td>
+              <td style="font-size:0.76rem">${vc.loadPort} → ${vc.dischargePort}</td>
               <td>${vc.cargoType} (${vc.quantityMT ? vc.quantityMT.toLocaleString() : 0} MT)</td>
-              <td style="color:var(--accent-cyan);font-weight:700">$${vc.freightRateUSD}/MT</td>
-              <td style="font-size:0.75rem;color:var(--text-muted)">${vc.laycanStart} to ${vc.laycanEnd}</td>
+              <td class="mono" style="color:var(--cyan);font-weight:700">$${vc.freightRateUSD}/MT</td>
+              <td class="mono" style="font-size:0.72rem;color:var(--ink-3)">${vc.laycanStart} to ${vc.laycanEnd}</td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openVCModal('${vc.contractId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('vcs', '${vc.contractId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openVCModal('${vc.contractId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('vcs', '${vc.contractId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No voyage contracts match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No voyage contracts match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -704,15 +740,15 @@ function renderVCView(vcs) {
 // ── 7. RIDER CLAUSE MANAGEMENT ──
 function renderRiderView(riders) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">✒️ Rider Clause Management</div>
-          <div class="card-sub-text">Showing ${riders.length} of ${state.data.riders.length} Rider Clauses · Precedence rules & overrides</div>
+          <div class="sub-h-title">✒️ Rider Clause Management</div>
+          <div class="sub-h-sub">Showing ${riders.length} of ${state.data.riders.length} Rider Clauses · Precedence rules & overrides</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openRiderModal()">+ Add Rider Clause</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openRiderModal()">+ Add Rider Clause</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Clause ID</th>
@@ -727,18 +763,18 @@ function renderRiderView(riders) {
         <tbody>
           ${riders.length > 0 ? riders.map(r => `
             <tr>
-              <td><span class="badge-tag badge-gray">${r.clauseId}</span></td>
-              <td style="font-weight:600;color:#fff">${r.title}</td>
-              <td><span class="badge-tag badge-purple">${r.category}</span></td>
-              <td><span class="badge-tag badge-amber">${r.associatedContractId}</span></td>
-              <td>${r.overridesPrintedForm ? '<span class="badge-tag badge-emerald">✓ Overrides Printed Form</span>' : '<span class="badge-tag badge-gray">Standard</span>'}</td>
-              <td><span class="badge-tag badge-cyan">${r.status}</span></td>
+              <td><span class="st mute">${r.clauseId}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${r.title}</td>
+              <td><span class="st info">${r.category}</span></td>
+              <td><span class="st warn">${r.associatedContractId}</span></td>
+              <td>${r.overridesPrintedForm ? '<span class="st signal">✓ Overrides Printed Form</span>' : '<span class="st mute">Standard</span>'}</td>
+              <td><span class="st good">${r.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openRiderModal('${r.clauseId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('riders', '${r.clauseId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openRiderModal('${r.clauseId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('riders', '${r.clauseId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No rider clauses match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ink-3)">No rider clauses match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -748,15 +784,15 @@ function renderRiderView(riders) {
 // ── 8. MASTER INSTRUCTION MANAGEMENT ──
 function renderMasterView(masters) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">📋 Master Instruction Management</div>
-          <div class="card-sub-text">Showing ${masters.length} of ${state.data.masters.length} Master Instructions · Loading & bunkering terms</div>
+          <div class="sub-h-title">📋 Master Instruction Management</div>
+          <div class="sub-h-sub">Showing ${masters.length} of ${state.data.masters.length} Master Instructions · Loading & bunkering terms</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openMasterModal()">+ Issue Master Instruction</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openMasterModal()">+ Issue Master Instruction</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Instruction No</th>
@@ -773,20 +809,20 @@ function renderMasterView(masters) {
         <tbody>
           ${masters.length > 0 ? masters.map(m => `
             <tr>
-              <td><span class="badge-tag badge-cyan">${m.instructionNo}</span></td>
-              <td><span class="badge-tag badge-amber">${m.contractId}</span></td>
-              <td style="font-weight:600;color:#fff">${m.vesselName}</td>
+              <td><span class="st info">${m.instructionNo}</span></td>
+              <td><span class="st warn">${m.contractId}</span></td>
+              <td style="font-weight:600;color:var(--ink)">${m.vesselName}</td>
               <td>${m.issuedTo}</td>
               <td style="font-size:0.75rem">${m.issuedBy}</td>
-              <td style="font-size:0.75rem">${m.issueDate}</td>
-              <td><span class="badge-tag badge-${m.priority === 'Urgent' ? 'rose' : m.priority === 'High' ? 'amber' : 'blue'}">${m.priority}</span></td>
-              <td><span class="badge-tag badge-emerald">${m.status}</span></td>
+              <td class="mono" style="font-size:0.72rem">${m.issueDate}</td>
+              <td><span class="st ${m.priority === 'Urgent' ? 'crit' : m.priority === 'High' ? 'warn' : 'info'}">${m.priority}</span></td>
+              <td><span class="st good">${m.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openMasterModal('${m.instructionId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('masters', '${m.instructionId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openMasterModal('${m.instructionId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('masters', '${m.instructionId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No master instructions match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No master instructions match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -796,15 +832,15 @@ function renderMasterView(masters) {
 // ── 9. INSURANCE MANAGEMENT ──
 function renderInsuranceView(insurance) {
   return `
-    <div class="card-table-wrap">
-      <div class="card-header-bar">
+    <div class="dwrap">
+      <div class="sub-h-bar">
         <div>
-          <div class="card-title-text">🛡️ Marine Insurance & Risk Management</div>
-          <div class="card-sub-text">Showing ${insurance.length} of ${state.data.insurance.length} Marine Insurance Policies · P&I / H&M / War Risk</div>
+          <div class="sub-h-title">🛡️ Marine Insurance & Risk Management</div>
+          <div class="sub-h-sub">Showing ${insurance.length} of ${state.data.insurance.length} Marine Insurance Policies · P&I / H&M / War Risk</div>
         </div>
-        <button class="btn btn-cyan btn-sm" onclick="window.openInsuranceModal()">+ Register Policy</button>
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.openInsuranceModal()">+ Register Policy</button>
       </div>
-      <table class="data-table">
+      <table class="dtable">
         <thead>
           <tr>
             <th>Policy No</th>
@@ -821,20 +857,20 @@ function renderInsuranceView(insurance) {
         <tbody>
           ${insurance.length > 0 ? insurance.map(p => `
             <tr>
-              <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted)">${p.policyNo}</td>
-              <td style="font-weight:600;color:#fff">${p.vesselName}</td>
-              <td><span class="badge-tag badge-${p.policyType === 'P&I Club' ? 'emerald' : p.policyType === 'Hull & Machinery' ? 'amber' : 'purple'}">${p.policyType}</span></td>
+              <td class="mono" style="font-size:0.75rem;color:var(--ink-3)">${p.policyNo}</td>
+              <td style="font-weight:600;color:var(--ink)">${p.vesselName}</td>
+              <td><span class="st ${p.policyType === 'P&I Club' ? 'good' : p.policyType === 'Hull & Machinery' ? 'warn' : 'info'}">${p.policyType}</span></td>
               <td>${p.insurer}</td>
-              <td style="color:var(--accent-cyan);font-weight:600">${p.insuredLimit}</td>
+              <td class="mono" style="color:var(--cyan);font-weight:600">${p.insuredLimit}</td>
               <td>${p.deductible}</td>
-              <td style="font-size:0.75rem">${p.expiryDate}</td>
-              <td><span class="badge-tag badge-emerald">${p.status}</span></td>
+              <td class="mono" style="font-size:0.72rem">${p.expiryDate}</td>
+              <td><span class="st good">${p.status}</span></td>
               <td>
-                <button class="btn btn-secondary btn-xs" onclick="window.openInsuranceModal('${p.policyId}')">Edit</button>
-                <button class="btn btn-rose btn-xs" onclick="window.deleteItem('insurance', '${p.policyId}')">Delete</button>
+                <button class="btn-c btn-c-sec btn-xs" onclick="window.openInsuranceModal('${p.policyId}')">Edit</button>
+                <button class="btn-c btn-c-rose btn-xs" onclick="window.deleteItem('insurance', '${p.policyId}')">Delete</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No insurance policies match current filter criteria.</td></tr>'}
+          `).join('') : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--ink-3)">No insurance policies match current console filter criteria.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -842,7 +878,7 @@ function renderInsuranceView(insurance) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CRUD MODALS ENGINE & DIALOG HANDLERS (TVO STYLED)
+// CRUD MODALS ENGINE & BLADE DIALOG HANDLERS (INTELLIGENCE ENGINE FORMAT)
 // ═══════════════════════════════════════════════════════════════════════════
 
 window.deleteItem = function(entityKey, id) {
@@ -855,34 +891,34 @@ window.deleteItem = function(entityKey, id) {
 };
 
 function createModalContainer(title, formHtml, onSave) {
-  const existing = document.getElementById('tvo-modal-overlay');
+  const existing = document.getElementById('blade-overlay');
   if (existing) existing.remove();
 
   const overlay = document.createElement('div');
-  overlay.id = 'tvo-modal-overlay';
-  overlay.className = 'tvo-modal-overlay';
+  overlay.id = 'blade-overlay';
+  overlay.className = 'blade-overlay';
 
   overlay.innerHTML = `
-    <div class="tvo-modal-card">
-      <div class="tvo-modal-header">
-        <div class="tvo-modal-title">${title}</div>
-        <button class="tvo-modal-close" onclick="document.getElementById('tvo-modal-overlay').remove()">✕</button>
+    <div class="blade-card">
+      <div class="blade-header">
+        <div class="blade-title">${title}</div>
+        <button class="blade-close" onclick="document.getElementById('blade-overlay').remove()">✕</button>
       </div>
-      <form id="tvo-modal-form">
+      <form id="blade-form">
         ${formHtml}
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('tvo-modal-overlay').remove()">Cancel</button>
-          <button type="submit" class="btn btn-cyan">Save Record</button>
+        <div class="blade-actions">
+          <button type="button" class="btn-c btn-c-sec" onclick="document.getElementById('blade-overlay').remove()">Cancel</button>
+          <button type="submit" class="btn-c btn-c-primary">Save Record</button>
         </div>
       </form>
     </div>
   `;
 
   document.body.appendChild(overlay);
-  document.getElementById('tvo-modal-form').addEventListener('submit', (e) => {
+  document.getElementById('blade-form').addEventListener('submit', (e) => {
     e.preventDefault();
     onSave();
-    document.getElementById('tvo-modal-overlay').remove();
+    document.getElementById('blade-overlay').remove();
     renderApp();
   });
 }
@@ -891,39 +927,39 @@ function createModalContainer(title, formHtml, onSave) {
 window.openOrgModal = function(id = null) {
   const item = id ? state.data.orgs.find(o => o.id === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Org ID</label>
-        <input class="form-input" id="m-id" value="${item.id || 'org-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Org ID</label>
+        <input class="c-input" id="m-id" value="${item.id || 'org-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Org Code</label>
-        <input class="form-input" id="m-code" value="${item.code || ''}" required placeholder="e.g. TEG">
+      <div class="f-group">
+        <label class="f-label">Org Code</label>
+        <input class="c-input" id="m-code" value="${item.code || ''}" required placeholder="e.g. TEG">
       </div>
-      <div class="form-group full-width">
-        <label class="form-label">Organization Name</label>
-        <input class="form-input" id="m-name" value="${item.name || ''}" required placeholder="Full company name">
+      <div class="f-group full">
+        <label class="f-label">Organization Name</label>
+        <input class="c-input" id="m-name" value="${item.name || ''}" required placeholder="Full company name">
       </div>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <select class="form-select" id="m-type">
+      <div class="f-group">
+        <label class="f-label">Type</label>
+        <select class="c-select" id="m-type">
           <option ${item.type === 'Carrier / Ship Owner' ? 'selected' : ''}>Carrier / Ship Owner</option>
           <option ${item.type === 'Charterer / Trader' ? 'selected' : ''}>Charterer / Trader</option>
           <option ${item.type === 'Shipper / Cargo Interest' ? 'selected' : ''}>Shipper / Cargo Interest</option>
           <option ${item.type === 'Port Agency & Ops' ? 'selected' : ''}>Port Agency & Ops</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Country</label>
-        <input class="form-input" id="m-country" value="${item.country || 'Singapore'}">
+      <div class="f-group">
+        <label class="f-label">Country</label>
+        <input class="c-input" id="m-country" value="${item.country || 'Singapore'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Domain</label>
-        <input class="form-input" id="m-domain" value="${item.domain || ''}" placeholder="domain.com">
+      <div class="f-group">
+        <label class="f-label">Domain</label>
+        <input class="c-input" id="m-domain" value="${item.domain || ''}" placeholder="domain.com">
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="m-status">
+      <div class="f-group">
+        <label class="f-label">Status</label>
+        <select class="c-select" id="m-status">
           <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
           <option ${item.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
         </select>
@@ -954,31 +990,31 @@ window.openOrgModal = function(id = null) {
 window.openFleetModal = function(id = null) {
   const item = id ? state.data.fleets.find(f => f.id === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Fleet ID</label>
-        <input class="form-input" id="m-id" value="${item.id || 'flt-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Fleet ID</label>
+        <input class="c-input" id="m-id" value="${item.id || 'flt-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Fleet Type</label>
-        <select class="form-select" id="m-type">
+      <div class="f-group">
+        <label class="f-label">Fleet Type</label>
+        <select class="c-select" id="m-type">
           <option ${item.type === 'Tanker' ? 'selected' : ''}>Tanker</option>
           <option ${item.type === 'Dry Bulk' ? 'selected' : ''}>Dry Bulk</option>
           <option ${item.type === 'Gas Carrier' ? 'selected' : ''}>Gas Carrier</option>
           <option ${item.type === 'Container' ? 'selected' : ''}>Container</option>
         </select>
       </div>
-      <div class="form-group full-width">
-        <label class="form-label">Fleet Name</label>
-        <input class="form-input" id="m-name" value="${item.name || ''}" required placeholder="e.g. Crude Tanker Fleet">
+      <div class="f-group full">
+        <label class="f-label">Fleet Name</label>
+        <input class="c-input" id="m-name" value="${item.name || ''}" required placeholder="e.g. Crude Tanker Fleet">
       </div>
-      <div class="form-group">
-        <label class="form-label">Fleet Manager</label>
-        <input class="form-input" id="m-manager" value="${item.manager || ''}">
+      <div class="f-group">
+        <label class="f-label">Fleet Manager</label>
+        <input class="c-input" id="m-manager" value="${item.manager || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel Count</label>
-        <input class="form-input" type="number" id="m-count" value="${item.vesselCount || 1}">
+      <div class="f-group">
+        <label class="f-label">Vessel Count</label>
+        <input class="c-input" type="number" id="m-count" value="${item.vesselCount || 1}">
       </div>
     </div>
   `;
@@ -1005,30 +1041,30 @@ window.openFleetModal = function(id = null) {
 window.openShipModal = function(imo = null) {
   const item = imo ? state.data.vessels.find(v => v.imo === imo) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">IMO Number</label>
-        <input class="form-input" id="m-imo" value="${item.imo || '9200' + Math.floor(100+Math.random()*900)}" required ${imo ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">IMO Number</label>
+        <input class="c-input" id="m-imo" value="${item.imo || '9200' + Math.floor(100+Math.random()*900)}" required ${imo ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel Name</label>
-        <input class="form-input" id="m-name" value="${item.name || ''}" required placeholder="e.g. MT Tegrity Apex">
+      <div class="f-group">
+        <label class="f-label">Vessel Name</label>
+        <input class="c-input" id="m-name" value="${item.name || ''}" required placeholder="e.g. MT Tegrity Apex">
       </div>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <input class="form-input" id="m-type" value="${item.type || 'Crude Tanker'}">
+      <div class="f-group">
+        <label class="f-label">Type</label>
+        <input class="c-input" id="m-type" value="${item.type || 'Crude Tanker'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Flag</label>
-        <input class="form-input" id="m-flag" value="${item.flag || 'Singapore'}">
+      <div class="f-group">
+        <label class="f-label">Flag</label>
+        <input class="c-input" id="m-flag" value="${item.flag || 'Singapore'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">DWT (MT)</label>
-        <input class="form-input" type="number" id="m-dwt" value="${item.dwt || 100000}">
+      <div class="f-group">
+        <label class="f-label">DWT (MT)</label>
+        <input class="c-input" type="number" id="m-dwt" value="${item.dwt || 100000}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Owner</label>
-        <input class="form-input" id="m-owner" value="${item.owner || 'TegrityTec Shipping Pte. Ltd.'}">
+      <div class="f-group">
+        <label class="f-label">Owner</label>
+        <input class="c-input" id="m-owner" value="${item.owner || 'TegrityTec Shipping Pte. Ltd.'}">
       </div>
     </div>
   `;
@@ -1058,34 +1094,34 @@ window.openShipModal = function(imo = null) {
 window.openCPModal = function(id = null) {
   const item = id ? state.data.cps.find(c => c.cpId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">CP Code</label>
-        <input class="form-input" id="m-id" value="${item.cpId || 'CP-NEW-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">CP Code</label>
+        <input class="c-input" id="m-id" value="${item.cpId || 'CP-NEW-' + Date.now().toString().slice(-4)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">CP Form</label>
-        <input class="form-input" id="m-form" value="${item.cpForm || 'BPVOY4'}" required>
+      <div class="f-group">
+        <label class="f-label">CP Form</label>
+        <input class="c-input" id="m-form" value="${item.cpForm || 'BPVOY4'}" required>
       </div>
-      <div class="form-group">
-        <label class="form-label">Charter Type</label>
-        <select class="form-select" id="m-type">
+      <div class="f-group">
+        <label class="f-label">Charter Type</label>
+        <select class="c-select" id="m-type">
           <option ${item.charterType === 'Voyage' ? 'selected' : ''}>Voyage</option>
           <option ${item.charterType === 'Time' ? 'selected' : ''}>Time</option>
           <option ${item.charterType === 'Bareboat' ? 'selected' : ''}>Bareboat</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Charterer</label>
-        <input class="form-input" id="m-charterer" value="${item.charterer || ''}">
+      <div class="f-group">
+        <label class="f-label">Charterer</label>
+        <input class="c-input" id="m-charterer" value="${item.charterer || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Demurrage Rate ($/day)</label>
-        <input class="form-input" type="number" id="m-dem" value="${item.demurrageRate || 40000}">
+      <div class="f-group">
+        <label class="f-label">Demurrage Rate ($/day)</label>
+        <input class="c-input" type="number" id="m-dem" value="${item.demurrageRate || 40000}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Laytime Terms</label>
-        <input class="form-input" id="m-laytime" value="${item.laytimeTerms || '72 Hours SHINC'}">
+      <div class="f-group">
+        <label class="f-label">Laytime Terms</label>
+        <input class="c-input" id="m-laytime" value="${item.laytimeTerms || '72 Hours SHINC'}">
       </div>
     </div>
   `;
@@ -1115,32 +1151,32 @@ window.openCPModal = function(id = null) {
 window.openTCModal = function(id = null) {
   const item = id ? state.data.tcs.find(t => t.contractId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Contract ID</label>
-        <input class="form-input" id="m-id" value="${item.contractId || 'TC-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Contract ID</label>
+        <input class="c-input" id="m-id" value="${item.contractId || 'TC-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel</label>
-        <select class="form-select" id="m-vessel">
+      <div class="f-group">
+        <label class="f-label">Vessel</label>
+        <select class="c-select" id="m-vessel">
           ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Charterer Name</label>
-        <input class="form-input" id="m-charterer" value="${item.chartererName || ''}">
+      <div class="f-group">
+        <label class="f-label">Charterer Name</label>
+        <input class="c-input" id="m-charterer" value="${item.chartererName || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Hire Rate ($/day)</label>
-        <input class="form-input" type="number" id="m-rate" value="${item.hireRatePerDay || 35000}">
+      <div class="f-group">
+        <label class="f-label">Hire Rate ($/day)</label>
+        <input class="c-input" type="number" id="m-rate" value="${item.hireRatePerDay || 35000}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Delivery Port</label>
-        <input class="form-input" id="m-del" value="${item.deliveryPort || ''}">
+      <div class="f-group">
+        <label class="f-label">Delivery Port</label>
+        <input class="c-input" id="m-del" value="${item.deliveryPort || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Commence Date</label>
-        <input class="form-input" type="date" id="m-commence" value="${item.commenceDate || '2026-04-01'}">
+      <div class="f-group">
+        <label class="f-label">Commence Date</label>
+        <input class="c-input" type="date" id="m-commence" value="${item.commenceDate || '2026-04-01'}">
       </div>
     </div>
   `;
@@ -1172,40 +1208,40 @@ window.openTCModal = function(id = null) {
 window.openVCModal = function(id = null) {
   const item = id ? state.data.vcs.find(v => v.contractId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Contract ID</label>
-        <input class="form-input" id="m-id" value="${item.contractId || 'VC-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Contract ID</label>
+        <input class="c-input" id="m-id" value="${item.contractId || 'VC-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Voyage Number</label>
-        <input class="form-input" id="m-vno" value="${item.voyageNumber || 'TVQ-2026-005'}">
+      <div class="f-group">
+        <label class="f-label">Voyage Number</label>
+        <input class="c-input" id="m-vno" value="${item.voyageNumber || 'TVQ-2026-005'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel</label>
-        <select class="form-select" id="m-vessel">
+      <div class="f-group">
+        <label class="f-label">Vessel</label>
+        <select class="c-select" id="m-vessel">
           ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Charterer</label>
-        <input class="form-input" id="m-charterer" value="${item.chartererName || ''}">
+      <div class="f-group">
+        <label class="f-label">Charterer</label>
+        <input class="c-input" id="m-charterer" value="${item.chartererName || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Load Port</label>
-        <input class="form-input" id="m-load" value="${item.loadPort || ''}">
+      <div class="f-group">
+        <label class="f-label">Load Port</label>
+        <input class="c-input" id="m-load" value="${item.loadPort || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Discharge Port</label>
-        <input class="form-input" id="m-disch" value="${item.dischargePort || ''}">
+      <div class="f-group">
+        <label class="f-label">Discharge Port</label>
+        <input class="c-input" id="m-disch" value="${item.dischargePort || ''}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Freight Rate ($/MT)</label>
-        <input class="form-input" type="number" id="m-freight" value="${item.freightRateUSD || 25}">
+      <div class="f-group">
+        <label class="f-label">Freight Rate ($/MT)</label>
+        <input class="c-input" type="number" id="m-freight" value="${item.freightRateUSD || 25}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Cargo Quantity (MT)</label>
-        <input class="form-input" type="number" id="m-qty" value="${item.quantityMT || 50000}">
+      <div class="f-group">
+        <label class="f-label">Cargo Quantity (MT)</label>
+        <input class="c-input" type="number" id="m-qty" value="${item.quantityMT || 50000}">
       </div>
     </div>
   `;
@@ -1240,22 +1276,22 @@ window.openVCModal = function(id = null) {
 window.openRiderModal = function(id = null) {
   const item = id ? state.data.riders.find(r => r.clauseId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Clause ID</label>
-        <input class="form-input" id="m-id" value="${item.clauseId || 'RC-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Clause ID</label>
+        <input class="c-input" id="m-id" value="${item.clauseId || 'RC-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Category</label>
-        <input class="form-input" id="m-cat" value="${item.category || 'NOR & Laytime'}">
+      <div class="f-group">
+        <label class="f-label">Category</label>
+        <input class="c-input" id="m-cat" value="${item.category || 'NOR & Laytime'}">
       </div>
-      <div class="form-group full-width">
-        <label class="form-label">Title</label>
-        <input class="form-input" id="m-title" value="${item.title || ''}" required>
+      <div class="f-group full">
+        <label class="f-label">Title</label>
+        <input class="c-input" id="m-title" value="${item.title || ''}" required>
       </div>
-      <div class="form-group full-width">
-        <label class="form-label">Rider Clause Text</label>
-        <textarea class="form-input" id="m-text" rows="4">${item.riderText || ''}</textarea>
+      <div class="f-group full">
+        <label class="f-label">Rider Clause Text</label>
+        <textarea class="c-input" id="m-text" rows="4">${item.riderText || ''}</textarea>
       </div>
     </div>
   `;
@@ -1282,32 +1318,32 @@ window.openRiderModal = function(id = null) {
 window.openMasterModal = function(id = null) {
   const item = id ? state.data.masters.find(m => m.instructionId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Instruction No</label>
-        <input class="form-input" id="m-no" value="${item.instructionNo || 'TVI-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Instruction No</label>
+        <input class="c-input" id="m-no" value="${item.instructionNo || 'TVI-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel</label>
-        <select class="form-select" id="m-vessel">
+      <div class="f-group">
+        <label class="f-label">Vessel</label>
+        <select class="c-select" id="m-vessel">
           ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Issued To</label>
-        <input class="form-input" id="m-to" value="${item.issuedTo || 'Master'}">
+      <div class="f-group">
+        <label class="f-label">Issued To</label>
+        <input class="c-input" id="m-to" value="${item.issuedTo || 'Master'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Priority</label>
-        <select class="form-select" id="m-prio">
+      <div class="f-group">
+        <label class="f-label">Priority</label>
+        <select class="c-select" id="m-prio">
           <option ${item.priority === 'Routine' ? 'selected' : ''}>Routine</option>
           <option ${item.priority === 'High' ? 'selected' : ''}>High</option>
           <option ${item.priority === 'Urgent' ? 'selected' : ''}>Urgent</option>
         </select>
       </div>
-      <div class="form-group full-width">
-        <label class="form-label">Loading Instructions</label>
-        <textarea class="form-input" id="m-load" rows="3">${item.loadingInstructions || ''}</textarea>
+      <div class="f-group full">
+        <label class="f-label">Loading Instructions</label>
+        <textarea class="c-input" id="m-load" rows="3">${item.loadingInstructions || ''}</textarea>
       </div>
     </div>
   `;
@@ -1341,37 +1377,37 @@ window.openMasterModal = function(id = null) {
 window.openInsuranceModal = function(id = null) {
   const item = id ? state.data.insurance.find(p => p.policyId === id) : {};
   const formHtml = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Policy No</label>
-        <input class="form-input" id="m-no" value="${item.policyNo || 'GARD-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
+    <div class="f-grid">
+      <div class="f-group">
+        <label class="f-label">Policy No</label>
+        <input class="c-input" id="m-no" value="${item.policyNo || 'GARD-2026-' + Date.now().toString().slice(-3)}" required ${id ? 'readonly' : ''}>
       </div>
-      <div class="form-group">
-        <label class="form-label">Vessel</label>
-        <select class="form-select" id="m-vessel">
+      <div class="f-group">
+        <label class="f-label">Vessel</label>
+        <select class="c-select" id="m-vessel">
           ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Policy Type</label>
-        <select class="form-select" id="m-type">
+      <div class="f-group">
+        <label class="f-label">Policy Type</label>
+        <select class="c-select" id="m-type">
           <option ${item.policyType === 'P&I Club' ? 'selected' : ''}>P&I Club</option>
           <option ${item.policyType === 'Hull & Machinery' ? 'selected' : ''}>Hull & Machinery</option>
           <option ${item.policyType === 'War Risk' ? 'selected' : ''}>War Risk</option>
           <option ${item.policyType === 'Loss of Hire' ? 'selected' : ''}>Loss of Hire</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Insurer</label>
-        <input class="form-input" id="m-insurer" value="${item.insurer || 'Gard P&I Club'}">
+      <div class="f-group">
+        <label class="f-label">Insurer</label>
+        <input class="c-input" id="m-insurer" value="${item.insurer || 'Gard P&I Club'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Insured Limit</label>
-        <input class="form-input" id="m-limit" value="${item.insuredLimit || '$500,000,000'}">
+      <div class="f-group">
+        <label class="f-label">Insured Limit</label>
+        <input class="c-input" id="m-limit" value="${item.insuredLimit || '$500,000,000'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Deductible</label>
-        <input class="form-input" id="m-ded" value="${item.deductible || '$50,000'}">
+      <div class="f-group">
+        <label class="f-label">Deductible</label>
+        <input class="c-input" id="m-ded" value="${item.deductible || '$50,000'}">
       </div>
     </div>
   `;

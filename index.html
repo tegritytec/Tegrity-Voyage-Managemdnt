@@ -1,153 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TegrityVoyageManagement (TVM) · Standalone Enterprise Application</title>
-  <meta name="description" content="TegrityVoyageManagement (TVM) is a dedicated standalone enterprise application for Organization, Fleet, Ship, Charter Party, Time Contract, Voyage Contract, Rider Clause, Master Instruction, and Marine Insurance management.">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Tegrity Voyage Management (TVM) — Console shell for TegrityVoyageIQ. Standalone Enterprise Application.">
+  <title>Tegrity Voyage Management — Intelligence Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="tvm.css">
 </head>
-<body>
+<body class="env-signal">
 
-  <!-- HEADER & TOP NAVIGATION (TVO ALIGNED) -->
-  <header class="tvm-header">
-    <div class="tvm-brand">
-      <div class="brand-icon">🏢</div>
-      <div class="brand-title">
-        <h1>
-          TegrityVoyageManagement (TVM)
-          <span class="badge-tag badge-cyan">Standalone Enterprise App</span>
-        </h1>
-        <div class="brand-sub">Dedicated Maritime Management & Contract Administration Platform</div>
+  <div class="shell">
+    <!-- RIBBON HEADER (TEGRITY INTELLIGENCE ENGINE FORMAT) -->
+    <header class="ribbon">
+      <div class="orb">
+        <span>⚙️</span>
+      </div>
+      <div class="wordmark">
+        <b>TEGRITY VOYAGE MANAGEMENT</b>
+        <span>MANAGEMENT CONSOLE · BUILD 1.0</span>
+      </div>
+
+      <!-- MAIN NAVIGATION TABS FOR THE 9 CAPABILITIES -->
+      <nav class="console-nav" id="console-nav">
+        <button class="c-nav-btn active" data-tab="orgs">
+          <span>🏢</span> Organization Mgmt
+        </button>
+        <button class="c-nav-btn" data-tab="fleets">
+          <span>🚢</span> Fleet Management
+        </button>
+        <button class="c-nav-btn" data-tab="ships">
+          <span>⚓</span> Ship Management
+        </button>
+        <button class="c-nav-btn" data-tab="charterparties">
+          <span>📑</span> Charter Party Mgmt
+        </button>
+        <button class="c-nav-btn" data-tab="timecontracts">
+          <span>⏱️</span> Time Contract Mgmt
+        </button>
+        <button class="c-nav-btn" data-tab="voyagecontracts">
+          <span>📜</span> Voyage Contract Mgmt
+        </button>
+        <button class="c-nav-btn" data-tab="riderclauses">
+          <span>✒️</span> Rider Clause Mgmt
+        </button>
+        <button class="c-nav-btn" data-tab="masterinstructions">
+          <span>📋</span> Master Instruction
+        </button>
+        <button class="c-nav-btn" data-tab="insurance">
+          <span>🛡️</span> Insurance Management
+        </button>
+      </nav>
+
+      <!-- READOUT METRICS & PROFILE -->
+      <div class="ribbon-mid">
+        <div class="readout">
+          <b id="readout-total-scoped">0</b>
+          <span>SCOPED ENTITIES</span>
+        </div>
+
+        <div class="pilot">
+          <div class="av">AD</div>
+          <div class="who">
+            <b>Admin User</b>
+            <span>TegrityTec Ops</span>
+          </div>
+          <div class="score">99.4%</div>
+        </div>
+
+        <!-- Theme Picker -->
+        <div class="envpick" title="Switch Console Ambient Theme">
+          <button style="background:#9BE564" aria-pressed="true" onclick="window.setConsoleTheme('signal')" title="Signal Theme"></button>
+          <button style="background:#4FE0E8" aria-pressed="false" onclick="window.setConsoleTheme('aurora')" title="Aurora Theme"></button>
+          <button style="background:#FFB454" aria-pressed="false" onclick="window.setConsoleTheme('ember')" title="Ember Theme"></button>
+        </div>
+
+        <button class="btn-c btn-c-rose btn-xs" onclick="fetch('/api/logout',{method:'POST'}).then(()=>window.location.href='/login')">Logout</button>
+      </div>
+    </header>
+
+    <!-- ROLE PERSPECTIVE STRIP -->
+    <div class="role-bar-strip">
+      <div class="role-bar-left">
+        <span class="role-label">Role Perspective:</span>
+        <div class="role-chips" id="role-chips">
+          <div class="role-chip active" data-role="all">ALL ROLES</div>
+          <div class="role-chip" data-role="owner">SHIP OWNER</div>
+          <div class="role-chip" data-role="charterer">CHARTERER</div>
+          <div class="role-chip" data-role="master">MASTER</div>
+          <div class="role-chip" data-role="ops_manager">OPS MANAGER</div>
+          <div class="role-chip" data-role="underwriter">INSURER</div>
+        </div>
+      </div>
+
+      <div class="sync-status">
+        <div class="sync-dot"></div>
+        <span>INTELLIGENCE ENGINE SYNCED</span>
       </div>
     </div>
 
-    <!-- MAIN NAVIGATION TABS FOR THE 9 TVM CAPABILITIES -->
-    <nav class="tvm-nav" id="tvm-nav">
-      <button class="tvm-nav-btn active" data-tab="orgs">
-        <span>🏢</span> Organization Mgmt
-      </button>
-      <button class="tvm-nav-btn" data-tab="fleets">
-        <span>🚢</span> Fleet Management
-      </button>
-      <button class="tvm-nav-btn" data-tab="ships">
-        <span>⚓</span> Ship Management
-      </button>
-      <button class="tvm-nav-btn" data-tab="charterparties">
-        <span>📑</span> Charter Party Mgmt
-      </button>
-      <button class="tvm-nav-btn" data-tab="timecontracts">
-        <span>⏱️</span> Time Contract Mgmt
-      </button>
-      <button class="tvm-nav-btn" data-tab="voyagecontracts">
-        <span>📜</span> Voyage Contract Mgmt
-      </button>
-      <button class="tvm-nav-btn" data-tab="riderclauses">
-        <span>✒️</span> Rider Clause Mgmt
-      </button>
-      <button class="tvm-nav-btn" data-tab="masterinstructions">
-        <span>📋</span> Master Instruction
-      </button>
-      <button class="tvm-nav-btn" data-tab="insurance">
-        <span>🛡️</span> Insurance Management
-      </button>
-    </nav>
+    <!-- CONSOLE OPERATIONAL FILTER BAR -->
+    <div class="filter-console">
+      <div class="filter-grid">
+        <div class="f-item">
+          <label>🏢 Organization</label>
+          <select id="filter-org" class="c-select">
+            <option value="ALL">All Organizations</option>
+          </select>
+        </div>
 
-    <!-- HEADER ACTIONS -->
-    <div class="header-actions">
-      <div class="app-status-pill">
-        <span class="status-dot"></span> TegrityTec TVM Active
+        <div class="f-item">
+          <label>🚢 Fleet Type</label>
+          <select id="filter-fleet" class="c-select">
+            <option value="ALL">All Fleets</option>
+          </select>
+        </div>
+
+        <div class="f-item">
+          <label>⚓ Ship / Vessel</label>
+          <select id="filter-ship" class="c-select">
+            <option value="ALL">All Vessels</option>
+          </select>
+        </div>
+
+        <div class="f-item">
+          <label>📜 Contract Fixture</label>
+          <select id="filter-contract" class="c-select">
+            <option value="ALL">All Contracts (TC & VC)</option>
+          </select>
+        </div>
+
+        <div class="f-item">
+          <label>📅 Date From</label>
+          <input type="date" id="filter-start-date" class="c-input">
+        </div>
+
+        <div class="f-item">
+          <label>📅 Date To</label>
+          <input type="date" id="filter-end-date" class="c-input">
+        </div>
+
+        <button id="btn-clear-filters" class="btn-reset-filter">🧹 CLEAR FILTERS</button>
       </div>
-      <button class="btn btn-secondary btn-xs" onclick="fetch('/api/logout',{method:'POST'}).then(()=>window.location.href='/login')">Logout</button>
-    </div>
-  </header>
 
-  <!-- SUB-BAR (ROLE SELECTOR PERSPECTIVES & DATASET SYNC STATUS) -->
-  <div class="sub-bar">
-    <div class="role-bar">
-      <span class="role-label">Role Perspective:</span>
-      <div class="role-chips" id="role-chips">
-        <div class="role-chip active" data-role="all">🌐 All Roles</div>
-        <div class="role-chip" data-role="owner">🏢 Ship Owner</div>
-        <div class="role-chip" data-role="charterer">📜 Charterer</div>
-        <div class="role-chip" data-role="master">🧑‍✈️ Master</div>
-        <div class="role-chip" data-role="ops_manager">📊 Operations Manager</div>
-        <div class="role-chip" data-role="underwriter">🛡️ Insurer / Underwriter</div>
+      <div class="active-filter-bar" id="active-filter-banner">
+        <span id="active-filter-text">Showing All Console Data (No Active Scoping Filters)</span>
+        <button class="btn-c btn-c-sec btn-xs" id="btn-clear-banner">Clear Scope</button>
       </div>
     </div>
 
-    <div class="sync-status" title="Connected to TegrityTec Shared Dataset">
-      <div class="sync-dot"></div>
-      <span>Connected to Shared Dataset</span>
-    </div>
+    <!-- MAIN CONSOLE VIEW CONTAINER -->
+    <main>
+      <!-- Rail Header -->
+      <div class="rail-h">
+        <h2 id="rail-title">OPERATIONAL METRIC TILES</h2>
+        <span class="n" id="rail-count">0 TILES ACTIVE</span>
+        <div class="line"></div>
+      </div>
+
+      <!-- Metric Tiles Grid -->
+      <div id="summary-stats" class="tile-grid"></div>
+
+      <!-- Active Sub-Pane Table Area -->
+      <div id="view-pane"></div>
+    </main>
+
+    <!-- FOOTER RIBBON -->
+    <footer class="ribbon-footer">
+      <div>TegrityTec Shipping Pte. Ltd. © 2026 · Tegrity Voyage Management Intelligence Console</div>
+      <div>Session: <strong style="color:var(--signal)">admin</strong> | Deployment: <strong>GCP Cloud Run (voyageiq-dev)</strong></div>
+    </footer>
   </div>
-
-  <!-- MULTI-DIMENSION OPERATIONAL FILTER BAR (ORG, FLEET, SHIP, CONTRACT, DATE RANGE) -->
-  <div class="filter-bar">
-    <div class="filter-controls">
-      <div class="filter-item">
-        <label>🏢 Organization:</label>
-        <select id="filter-org" class="form-select">
-          <option value="ALL">All Organizations</option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <label>🚢 Fleet Type:</label>
-        <select id="filter-fleet" class="form-select">
-          <option value="ALL">All Fleets</option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <label>🛳️ Ship / Vessel:</label>
-        <select id="filter-ship" class="form-select">
-          <option value="ALL">All Vessels</option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <label>📜 Contract Fixture:</label>
-        <select id="filter-contract" class="form-select">
-          <option value="ALL">All Contracts (TC & VC)</option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <label>📅 Date From:</label>
-        <input type="date" id="filter-start-date" class="form-input">
-      </div>
-
-      <div class="filter-item">
-        <label>📅 Date To:</label>
-        <input type="date" id="filter-end-date" class="form-input">
-      </div>
-
-      <button id="btn-clear-filters" class="btn btn-rose btn-sm" style="height:32px">🧹 Clear All Filters</button>
-    </div>
-
-    <div class="active-filter-banner" id="active-filter-banner">
-      <span class="active-filter-text" id="active-filter-text">Showing All Platform Data (No Active Filters)</span>
-      <button class="btn btn-secondary btn-xs" id="btn-clear-banner">Clear Filters</button>
-    </div>
-  </div>
-
-  <!-- MAIN VIEW CONTAINER FOR THE 9 TVM CAPABILITIES -->
-  <main class="main-content">
-    <!-- Dynamic Stats Grid -->
-    <div id="summary-stats" class="stats-grid"></div>
-
-    <!-- Active View Target Pane -->
-    <div id="view-pane" class="view-pane active"></div>
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="tvm-footer">
-    <div>TegrityTec Shipping Pte. Ltd. © 2026 · TegrityVoyageManagement Module</div>
-    <div>Logged in as: <strong>admin</strong> | Environment: <strong>GCP Cloud Run (voyageiq-dev)</strong></div>
-  </footer>
 
   <script type="module" src="tvm-app.js"></script>
 </body>
