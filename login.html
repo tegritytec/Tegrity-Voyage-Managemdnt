@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — TegrityVoyageManagement (TVM)</title>
+  <link rel="stylesheet" href="tvm.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="brand-logo">
+        <span class="logo-icon">🏢</span>
+        <span class="brand-name">TVM</span>
+      </div>
+      <h2>TegrityVoyageManagement</h2>
+      <p>Enterprise Maritime Management & Contract Administration Platform</p>
+    </div>
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="username">Username / Email</label>
+        <input class="form-input" type="text" id="username" value="admin" required placeholder="Enter your username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" type="password" id="password" value="admin" required placeholder="Enter your password">
+      </div>
+      <div id="login-error" class="error-msg" style="display:none;"></div>
+      <button type="submit" class="btn btn-primary btn-block">Sign In to TVM Portal</button>
+    </form>
+    <div class="login-footer">
+      <p>TegrityTec Shipping Pte. Ltd. © 2026. All rights reserved.</p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('login-error');
+      
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.href = '/';
+        } else {
+          errorDiv.style.display = 'block';
+          errorDiv.textContent = data.error || 'Invalid credentials';
+        }
+      } catch (err) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = 'Connection error. Please try again.';
+      }
+    });
+  </script>
+</body>
+</html>
