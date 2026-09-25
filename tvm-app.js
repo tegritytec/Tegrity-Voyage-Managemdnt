@@ -1011,14 +1011,16 @@ export function renderInspectorPane(filtered) {
 function getInspectorHtml(category, id, item) {
   let icon = '📝';
   let titleText = '';
-  let subText = 'Modify field parameters below and click "Save Record Changes" to update live across all console modules.';
+  let subText = 'Modify detailed operational parameters below and click "Save Record Changes" to update live across all console modules.';
   let fieldsHtml = '';
 
   switch (category) {
     case 'vessels': {
       icon = '⚓';
-      titleText = `Ship Particulars & IMO Profile : ${item.name} (IMO: ${item.imo})`;
+      titleText = `Ship Particulars & Technical IMO Profile : ${item.name} (IMO: ${item.imo})`;
+      const defaultPerf = item.performanceMatrix || "Main Engine: MAN B&W 6S60ME-C9.5 (13,500 kW @ 105 RPM). Auxiliary Engine: 3x Yanmar 6EY18AL (750 kW). Eco Laden Speed: 14.2 knots @ 41.5 MT/day VLSFO. Eco Ballast Speed: 14.8 knots @ 36.0 MT/day VLSFO. Boiler Consumption: 3.5 MT/day inert gas generator. Bow Thruster: 1,500 kW electric.";
       fieldsHtml = `
+        <div class="inspector-sec-head">📌 Section 1: Vessel Identity & Flag Particulars</div>
         <div class="inspector-field">
           <label class="inspector-label">IMO Number</label>
           <input class="inspector-input mono" value="${item.imo}" readonly>
@@ -1028,35 +1030,66 @@ function getInspectorHtml(category, id, item) {
           <input class="inspector-input" data-field="name" value="${item.name || ''}" required>
         </div>
         <div class="inspector-field">
-          <label class="inspector-label">Vessel Type</label>
+          <label class="inspector-label">Vessel Classification Type</label>
           <select class="inspector-select" data-field="type">
             <option ${item.type === 'Crude Tanker' ? 'selected' : ''}>Crude Tanker</option>
             <option ${item.type === 'Product Tanker' ? 'selected' : ''}>Product Tanker</option>
+            <option ${item.type === 'MR Product Tanker' ? 'selected' : ''}>MR Product Tanker</option>
             <option ${item.type === 'Chemical Tanker' ? 'selected' : ''}>Chemical Tanker</option>
             <option ${item.type === 'Capesize Bulk' ? 'selected' : ''}>Capesize Bulk</option>
             <option ${item.type === 'Panamax Bulk' ? 'selected' : ''}>Panamax Bulk</option>
+            <option ${item.type === 'Dry Bulk' ? 'selected' : ''}>Dry Bulk</option>
+            <option ${item.type === 'LPG Carrier' ? 'selected' : ''}>LPG Carrier</option>
             <option ${item.type === 'LNG Carrier' ? 'selected' : ''}>LNG Carrier</option>
             <option ${item.type === 'Container 14000TEU' ? 'selected' : ''}>Container 14000TEU</option>
           </select>
         </div>
         <div class="inspector-field">
-          <label class="inspector-label">Flag State</label>
+          <label class="inspector-label">Flag State Jurisdiction</label>
           <input class="inspector-input" data-field="flag" value="${item.flag || 'Singapore'}">
         </div>
         <div class="inspector-field">
-          <label class="inspector-label">Deadweight (DWT MT)</label>
+          <label class="inspector-label">Port of Registry</label>
+          <input class="inspector-input" data-field="portOfRegistry" value="${item.portOfRegistry || (item.flag === 'Singapore' ? 'Singapore' : item.flag === 'Marshall Islands' ? 'Majuro' : item.flag === 'Panama' ? 'Panama City' : 'Nassau')}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Call Sign</label>
+          <input class="inspector-input mono" data-field="callSign" value="${item.callSign || ('9V' + item.imo.slice(-4))}">
+        </div>
+
+        <div class="inspector-sec-head">📐 Section 2: Technical Tonnage & Structural Dimensions</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Summer Deadweight (DWT MT)</label>
           <input class="inspector-input mono" type="number" data-field="dwt" value="${item.dwt || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Gross Tonnage (GT)</label>
+          <input class="inspector-input mono" type="number" data-field="grossTonnage" value="${item.grossTonnage || Math.round((item.dwt || 50000) * 0.58)}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Net Tonnage (NT)</label>
+          <input class="inspector-input mono" type="number" data-field="netTonnage" value="${item.netTonnage || Math.round((item.dwt || 50000) * 0.32)}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Length Overall (LOA m)</label>
+          <input class="inspector-input mono" data-field="loaMeters" value="${item.loaMeters || (item.dwt > 100000 ? '245.0 m' : '183.0 m')}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Moulded Beam (m)</label>
+          <input class="inspector-input mono" data-field="beamMeters" value="${item.beamMeters || (item.dwt > 100000 ? '42.0 m' : '32.2 m')}">
         </div>
         <div class="inspector-field">
           <label class="inspector-label">Built Year</label>
           <input class="inspector-input mono" type="number" data-field="builtYear" value="${item.builtYear || 2022}">
         </div>
+
+        <div class="inspector-sec-head">🏢 Section 3: Ownership, Fleet & Operational Boundary</div>
         <div class="inspector-field">
           <label class="inspector-label">Registered Owner</label>
           <input class="inspector-input" data-field="owner" value="${item.owner || ''}">
         </div>
         <div class="inspector-field">
-          <label class="inspector-label">Fleet Classification</label>
+          <label class="inspector-label">Fleet Category Classification</label>
           <select class="inspector-select" data-field="fleetType">
             <option ${item.fleetType === 'Tanker' ? 'selected' : ''}>Tanker</option>
             <option ${item.fleetType === 'Dry Bulk' ? 'selected' : ''}>Dry Bulk</option>
@@ -1079,14 +1112,24 @@ function getInspectorHtml(category, id, item) {
             <option ${item.status === 'Laid Up' ? 'selected' : ''}>Laid Up</option>
           </select>
         </div>
+
+        <div class="inspector-sec-head">⚙️ Section 4: Propulsion Engine & Speed / Fuel Consumption Matrix</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Main Engine Specs & Speed/Consumption Warranty</label>
+          <textarea class="inspector-textarea" data-field="performanceMatrix" rows="3">${defaultPerf}</textarea>
+        </div>
       `;
       break;
     }
 
     case 'masters': {
       icon = '📋';
-      titleText = `Operational Master Instruction : ${item.instructionNo} (Vessel: ${item.vesselName})`;
+      titleText = `Operational Master Standing Instruction : ${item.instructionNo} (Vessel: ${item.vesselName})`;
+      const defaultLoad = item.loadingInstructions || "Tender NOR immediately upon reaching Ras Tanura outer anchorage WIBON/WIPON/WIFON/WICONS. Verify shore line displacement before commencing crude loading. Obtain signed dry tank certificate from Independent Surveyor prior to loading manifolds.";
+      const defaultBunk = item.bunkeringInstructions || "Lift 600 MT VLSFO 0.5% S at Fujairah en route to Singapore if ROB drops below 400 MT. Confirm 3 competitive quotes before ordering. Draw 4 manifold bunker samples during delivery in accordance with MARPOL Annex VI regulations.";
+      const defaultNotes = item.specialClauseNote || "Ensure full deck log entries during weather holds to substantiate laytime exclusion exceptions under BPVOY4 Clause 16. Advise Charterers immediately of any port delay exceeding 2 hours.";
       fieldsHtml = `
+        <div class="inspector-sec-head">📌 Section 1: Instruction Administrative Details & Target Vessel</div>
         <div class="inspector-field">
           <label class="inspector-label">Instruction Number</label>
           <input class="inspector-input mono" value="${item.instructionNo}" readonly>
@@ -1103,11 +1146,11 @@ function getInspectorHtml(category, id, item) {
         </div>
         <div class="inspector-field">
           <label class="inspector-label">Issued To</label>
-          <input class="inspector-input" data-field="issuedTo" value="${item.issuedTo || 'Master'}">
+          <input class="inspector-input" data-field="issuedTo" value="${item.issuedTo || 'Master, MT Tegrity Apex'}">
         </div>
         <div class="inspector-field">
           <label class="inspector-label">Issued By</label>
-          <input class="inspector-input" data-field="issuedBy" value="${item.issuedBy || ''}">
+          <input class="inspector-input" data-field="issuedBy" value="${item.issuedBy || 'Voyage Operator — TegrityTec Chartering'}">
         </div>
         <div class="inspector-field">
           <label class="inspector-label">Issue Date</label>
@@ -1122,25 +1165,352 @@ function getInspectorHtml(category, id, item) {
           </select>
         </div>
         <div class="inspector-field">
-          <label class="inspector-label">Instruction Status</label>
+          <label class="inspector-label">Execution Status</label>
           <select class="inspector-select" data-field="status">
             <option ${item.status === 'Issued' ? 'selected' : ''}>Issued</option>
-            <option ${item.status === 'Pending Ack' ? 'selected' : ''}>Pending Ack</option>
+            <option ${item.status === 'Acknowledged' ? 'selected' : ''}>Acknowledged</option>
             <option ${item.status === 'Executing' ? 'selected' : ''}>Executing</option>
             <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
           </select>
         </div>
+
+        <div class="inspector-sec-head">⚓ Section 2: Cargo, Tank Cleaning & NOR Berthing Orders</div>
         <div class="inspector-field full">
-          <label class="inspector-label">Loading & Discharge Instructions</label>
-          <textarea class="inspector-textarea" data-field="loadingInstructions" rows="2">${item.loadingInstructions || ''}</textarea>
+          <label class="inspector-label">Detailed Loading & Discharge Instructions</label>
+          <textarea class="inspector-textarea" data-field="loadingInstructions" rows="3">${defaultLoad}</textarea>
+        </div>
+
+        <div class="inspector-sec-head">⛽ Section 3: Bunkering, Fuel Specs & MARPOL Compliance</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Detailed Bunkering & Fuel Management Terms</label>
+          <textarea class="inspector-textarea" data-field="bunkeringInstructions" rows="3">${defaultBunk}</textarea>
+        </div>
+
+        <div class="inspector-sec-head">📜 Section 4: Laytime, Weather Hold & Special Clause Notes</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Special Rider Notes & Dispute Protection Guidelines</label>
+          <textarea class="inspector-textarea" data-field="specialClauseNote" rows="3">${defaultNotes}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'vcs': {
+      icon = '📜';
+      titleText = `Voyage Charter Fixture Agreement : ${item.contractId} (Voyage: ${item.voyageNumber})`;
+      const defaultNotes = item.voyageNotes || "CONGENBILL 2016 terms apply. Vessel warrants eco speed of 14.0 knots laden in good weather. Pumping warranty: 24 hours total discharge time or 7.0 bar pressure maintained at rail manifold. Tank cleaning to wall wash standards for clean cargo.";
+      fieldsHtml = `
+        <div class="inspector-sec-head">📜 Section 1: Voyage Contract & Fixture Overview</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract ID</label>
+          <input class="inspector-input mono" value="${item.contractId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Voyage Number</label>
+          <input class="inspector-input mono" data-field="voyageNumber" value="${item.voyageNumber || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Assigned Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Principal</label>
+          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Tenant Organization</label>
+          <select class="inspector-select" data-field="organizationId">
+            ${state.data.orgs.map(o => `<option value="${o.id}" ${item.organizationId === o.id ? 'selected' : ''}>${o.code} — ${o.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Voyage Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Pending' ? 'selected' : ''}>Pending</option>
+            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option ${item.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+        </div>
+
+        <div class="inspector-sec-head">🗺️ Section 2: Route, Cargo Particulars & Freight Economics</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Load Port</label>
+          <input class="inspector-input" data-field="loadPort" value="${item.loadPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Discharge Port</label>
+          <input class="inspector-input" data-field="dischargePort" value="${item.dischargePort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Cargo Commodity Description</label>
+          <input class="inspector-input" data-field="cargoType" value="${item.cargoType || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Cargo Quantity (MT)</label>
+          <input class="inspector-input mono" type="number" data-field="quantityMT" value="${item.quantityMT || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Freight Rate ($/MT)</label>
+          <input class="inspector-input mono" type="number" data-field="freightRateUSD" value="${item.freightRateUSD || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Est. Gross Freight Revenue ($)</label>
+          <input class="inspector-input mono" style="color:var(--signal);font-weight:700" value="$${((item.quantityMT || 0) * (item.freightRateUSD || 0)).toLocaleString()}" readonly>
+        </div>
+
+        <div class="inspector-sec-head">⏱️ Section 3: Laycan Window, Laytime & Demurrage Terms</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laycan Commencement Date</label>
+          <input class="inspector-input mono" type="date" data-field="laycanStart" value="${item.laycanStart || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laycan Expiry Date</label>
+          <input class="inspector-input mono" type="date" data-field="laycanEnd" value="${item.laycanEnd || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Allowed Laytime Terms</label>
+          <input class="inspector-input" data-field="laytimeTerms" value="${item.laytimeTerms || '72 Hours SHINC'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Demurrage Rate ($/Day)</label>
+          <input class="inspector-input mono" type="number" data-field="demurrageRate" value="${item.demurrageRate || 42000}">
+        </div>
+
+        <div class="inspector-sec-head">✒️ Section 4: Operational Clauses & Pumping Warranties</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Detailed Voyage Operational Notes & Special Terms</label>
+          <textarea class="inspector-textarea" data-field="voyageNotes" rows="3">${defaultNotes}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'tcs': {
+      icon = '⏱️';
+      titleText = `Time Charter Fixture Agreement : ${item.contractId} (${item.vesselName})`;
+      const defaultFuel = item.fuelSpecs || "VLSFO 0.5% Sulphur Max / LSMGO 0.1% Sulphur Max meeting ISO 8217:2017 RMK 380 standards. Delivery ROB: Min 500 MT VLSFO / 80 MT LSMGO.";
+      const defaultPerf = item.performanceWarranty || "14.5 knots @ 42.0 MT/day VLSFO (Laden) / 15.0 knots @ 36.0 MT/day VLSFO (Ballast) in good weather up to Beaufort 4 / Douglas Sea State 3.";
+      fieldsHtml = `
+        <div class="inspector-sec-head">⏱️ Section 1: Time Contract Overview & Charter Parties</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract ID</label>
+          <input class="inspector-input mono" value="${item.contractId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Time Chartered Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Principal Name</label>
+          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Tenant Organization</label>
+          <select class="inspector-select" data-field="organizationId">
+            ${state.data.orgs.map(o => `<option value="${o.id}" ${item.organizationId === o.id ? 'selected' : ''}>${o.code} — ${o.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option ${item.status === 'Terminated' ? 'selected' : ''}>Terminated</option>
+          </select>
+        </div>
+
+        <div class="inspector-sec-head">💰 Section 2: Daily Hire Economics & Delivery Port Ranges</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Daily Hire Rate ($/Day)</label>
+          <input class="inspector-input mono" type="number" data-field="hireRatePerDay" value="${item.hireRatePerDay || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Delivery Port / Range</label>
+          <input class="inspector-input" data-field="deliveryPort" value="${item.deliveryPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Redelivery Port / Range</label>
+          <input class="inspector-input" data-field="redeliveryPort" value="${item.redeliveryPort || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Commencement Date</label>
+          <input class="inspector-input mono" type="date" data-field="commenceDate" value="${item.commenceDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Expiry Date</label>
+          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
+        </div>
+
+        <div class="inspector-sec-head">⛽ Section 3: Bunkering Specs & Performance Warranties</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Bunker Fuel Specifications & ISO Standards</label>
+          <textarea class="inspector-textarea" data-field="fuelSpecs" rows="2">${defaultFuel}</textarea>
         </div>
         <div class="inspector-field full">
-          <label class="inspector-label">Bunkering & Fuel Terms</label>
-          <textarea class="inspector-textarea" data-field="bunkeringInstructions" rows="2">${item.bunkeringInstructions || ''}</textarea>
+          <label class="inspector-label">Speed & Fuel Consumption Warranty Terms</label>
+          <textarea class="inspector-textarea" data-field="performanceWarranty" rows="2">${defaultPerf}</textarea>
         </div>
+      `;
+      break;
+    }
+
+    case 'cps': {
+      icon = '📑';
+      titleText = `Charterparty Standard Form Specification : ${item.cpForm} (${item.cpId})`;
+      const defaultProv = item.specialProvisions || "BPVOY4 Clause 16 (Laytime Exceptions), Clause 20 (Pumping Warranty 24 hrs), Clause 34 (War Risk). English Law jurisdiction with London Maritime Arbitrators Association (LMAA) arbitration rules.";
+      fieldsHtml = `
+        <div class="inspector-sec-head">📑 Section 1: Standard Form & Principal Overview</div>
+        <div class="inspector-field">
+          <label class="inspector-label">CP Code</label>
+          <input class="inspector-input mono" value="${item.cpId}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Standard Form Name <span class="req">*</span></label>
+          <input class="inspector-input" data-field="cpForm" value="${item.cpForm || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charter Type</label>
+          <select class="inspector-select" data-field="charterType">
+            <option ${item.charterType === 'Voyage' ? 'selected' : ''}>Voyage</option>
+            <option ${item.charterType === 'Time' ? 'selected' : ''}>Time</option>
+            <option ${item.charterType === 'Bareboat' ? 'selected' : ''}>Bareboat</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Charterer Principal</label>
+          <input class="inspector-input" data-field="charterer" value="${item.charterer || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Registered Owner</label>
+          <input class="inspector-input" data-field="owner" value="${item.owner || ''}">
+        </div>
+
+        <div class="inspector-sec-head">⚖️ Section 2: Legal, Laytime & Demurrage Terms</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Laytime Terms</label>
+          <input class="inspector-input" data-field="laytimeTerms" value="${item.laytimeTerms || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Demurrage Rate ($/Day)</label>
+          <input class="inspector-input mono" type="number" data-field="demurrageRate" value="${item.demurrageRate || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Governing Law Jurisdiction</label>
+          <input class="inspector-input" data-field="governingLaw" value="${item.governingLaw || 'English Law'}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Claims Time Bar</label>
+          <input class="inspector-input" data-field="claimsTimeBar" value="${item.claimsTimeBar || ''}">
+        </div>
+
+        <div class="inspector-sec-head">📜 Section 3: Clause Overrides & Special Provisions</div>
         <div class="inspector-field full">
-          <label class="inspector-label">Special Clause Note</label>
-          <textarea class="inspector-textarea" data-field="specialClauseNote" rows="2">${item.specialClauseNote || ''}</textarea>
+          <label class="inspector-label">Form Overrides & Governing Arbitration Terms</label>
+          <textarea class="inspector-textarea" data-field="specialProvisions" rows="3">${defaultProv}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'riders': {
+      icon = '✒️';
+      titleText = `Rider Clause Specification : ${item.title} (${item.clauseId})`;
+      fieldsHtml = `
+        <div class="inspector-sec-head">✒️ Section 1: Clause Classification & Precedence Status</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Clause ID</label>
+          <input class="inspector-input mono" value="${item.clauseId}" readonly>
+        </div>
+        <div class="inspector-field span-2">
+          <label class="inspector-label">Clause Title <span class="req">*</span></label>
+          <input class="inspector-input" data-field="title" value="${item.title || ''}" required>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Category</label>
+          <input class="inspector-input" data-field="category" value="${item.category || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Associated Contract Ref</label>
+          <input class="inspector-input mono" data-field="associatedContractId" value="${item.associatedContractId || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Precedence Status</label>
+          <select class="inspector-select" data-field="overridesPrintedForm">
+            <option value="true" ${item.overridesPrintedForm ? 'selected' : ''}>✓ Overrides Printed Form</option>
+            <option value="false" ${!item.overridesPrintedForm ? 'selected' : ''}>Standard Form Precedence</option>
+          </select>
+        </div>
+
+        <div class="inspector-sec-head">📜 Section 2: Full Legal Clause Text</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Rider Clause Legal Text</label>
+          <textarea class="inspector-textarea" data-field="riderText" rows="4">${item.riderText || ''}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'insurance': {
+      icon = '🛡️';
+      titleText = `Marine Insurance Policy Details : ${item.policyNo} (${item.vesselName})`;
+      const defaultCov = item.coverageDetails || "Full P&I Cover under Club Rules including Oil Pollution Liability (CLCA 1992 $1 Billion limit), Collision with fixed & floating objects (FFO), Cargo Liabilities, Crew Wreck Removal, and Fines.";
+      fieldsHtml = `
+        <div class="inspector-sec-head">🛡️ Section 1: Policy Identity & Insured Vessel</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Number</label>
+          <input class="inspector-input mono" value="${item.policyNo}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insured Vessel</label>
+          <select class="inspector-select" data-field="vesselImo">
+            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Type</label>
+          <select class="inspector-select" data-field="policyType">
+            <option ${item.policyType === 'P&I Club' ? 'selected' : ''}>P&I Club</option>
+            <option ${item.policyType === 'Hull & Machinery' ? 'selected' : ''}>Hull & Machinery</option>
+            <option ${item.policyType === 'War Risk' ? 'selected' : ''}>War Risk</option>
+            <option ${item.policyType === 'Loss of Hire' ? 'selected' : ''}>Loss of Hire</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insurer / P&I Club Name</label>
+          <input class="inspector-input" data-field="insurer" value="${item.insurer || ''}">
+        </div>
+
+        <div class="inspector-sec-head">💵 Section 2: Coverage Limits & Policy Terms</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Insured Limit ($)</label>
+          <input class="inspector-input mono" data-field="insuredLimit" value="${item.insuredLimit || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Deductible ($)</label>
+          <input class="inspector-input mono" data-field="deductible" value="${item.deductible || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Expiry Date</label>
+          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Policy Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option ${item.status === 'Pending Renewal' ? 'selected' : ''}>Pending Renewal</option>
+            <option ${item.status === 'Expired' ? 'selected' : ''}>Expired</option>
+          </select>
+        </div>
+
+        <div class="inspector-sec-head">📋 Section 3: Scope of Risk Cover & Club Rulebook Terms</div>
+        <div class="inspector-field full">
+          <label class="inspector-label">Detailed Scope of Insurance Coverage</label>
+          <textarea class="inspector-textarea" data-field="coverageDetails" rows="3">${defaultCov}</textarea>
         </div>
       `;
       break;
@@ -1148,8 +1518,9 @@ function getInspectorHtml(category, id, item) {
 
     case 'orgs': {
       icon = '🏢';
-      titleText = `Organization Details & Multi-Tenant Boundaries : ${item.name} (${item.code})`;
+      titleText = `Tenant Organization Profile : ${item.name} (${item.code})`;
       fieldsHtml = `
+        <div class="inspector-sec-head">🏢 Section 1: Corporate Identity & Boundary</div>
         <div class="inspector-field">
           <label class="inspector-label">Org ID</label>
           <input class="inspector-input mono" value="${item.id}" readonly>
@@ -1171,6 +1542,8 @@ function getInspectorHtml(category, id, item) {
             <option ${item.type === 'Port Agency & Ops' ? 'selected' : ''}>Port Agency & Ops</option>
           </select>
         </div>
+
+        <div class="inspector-sec-head">🌐 Section 2: Regulatory & Domain Scope</div>
         <div class="inspector-field">
           <label class="inspector-label">Country Jurisdiction</label>
           <input class="inspector-input" data-field="country" value="${item.country || 'Singapore'}">
@@ -1178,6 +1551,14 @@ function getInspectorHtml(category, id, item) {
         <div class="inspector-field">
           <label class="inspector-label">Primary Domain</label>
           <input class="inspector-input mono" data-field="domain" value="${item.domain || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Tax / Registration ID</label>
+          <input class="inspector-input mono" data-field="taxId" value="${item.taxId || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contact Email</label>
+          <input class="inspector-input mono" data-field="contactEmail" value="${item.contactEmail || ''}">
         </div>
         <div class="inspector-field">
           <label class="inspector-label">Tenant Status</label>
@@ -1194,6 +1575,7 @@ function getInspectorHtml(category, id, item) {
       icon = '🚢';
       titleText = `Fleet Particulars & Category Registry : ${item.name} (${item.id})`;
       fieldsHtml = `
+        <div class="inspector-sec-head">🚢 Section 1: Fleet Category Overview</div>
         <div class="inspector-field">
           <label class="inspector-label">Fleet ID</label>
           <input class="inspector-input mono" value="${item.id}" readonly>
@@ -1225,254 +1607,11 @@ function getInspectorHtml(category, id, item) {
             ${state.data.orgs.map(o => `<option value="${o.id}" ${item.organizationId === o.id ? 'selected' : ''}>${o.code} — ${o.name}</option>`).join('')}
           </select>
         </div>
-      `;
-      break;
-    }
 
-    case 'cps': {
-      icon = '📑';
-      titleText = `Charter Party Form Specifications : ${item.cpForm} (${item.cpId})`;
-      fieldsHtml = `
-        <div class="inspector-field">
-          <label class="inspector-label">CP Code</label>
-          <input class="inspector-input mono" value="${item.cpId}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Standard Form Name <span class="req">*</span></label>
-          <input class="inspector-input" data-field="cpForm" value="${item.cpForm || ''}" required>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Charter Type</label>
-          <select class="inspector-select" data-field="charterType">
-            <option ${item.charterType === 'Voyage' ? 'selected' : ''}>Voyage</option>
-            <option ${item.charterType === 'Time' ? 'selected' : ''}>Time</option>
-            <option ${item.charterType === 'Bareboat' ? 'selected' : ''}>Bareboat</option>
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Charterer Principal</label>
-          <input class="inspector-input" data-field="charterer" value="${item.charterer || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Demurrage Rate ($/Day)</label>
-          <input class="inspector-input mono" type="number" data-field="demurrageRate" value="${item.demurrageRate || 0}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Laytime Terms</label>
-          <input class="inspector-input" data-field="laytimeTerms" value="${item.laytimeTerms || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Governing Law Jurisdiction</label>
-          <input class="inspector-input" data-field="governingLaw" value="${item.governingLaw || 'English Law'}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Claims Time Bar</label>
-          <input class="inspector-input" data-field="claimsTimeBar" value="${item.claimsTimeBar || ''}">
-        </div>
-      `;
-      break;
-    }
-
-    case 'tcs': {
-      icon = '⏱️';
-      titleText = `Time Contract Fixture Details : ${item.contractId} (${item.vesselName})`;
-      fieldsHtml = `
-        <div class="inspector-field">
-          <label class="inspector-label">Contract ID</label>
-          <input class="inspector-input mono" value="${item.contractId}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Time Chartered Vessel</label>
-          <select class="inspector-select" data-field="vesselImo">
-            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Charterer Name</label>
-          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Daily Hire Rate ($/Day)</label>
-          <input class="inspector-input mono" type="number" data-field="hireRatePerDay" value="${item.hireRatePerDay || 0}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Delivery Port</label>
-          <input class="inspector-input" data-field="deliveryPort" value="${item.deliveryPort || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Redelivery Port / Range</label>
-          <input class="inspector-input" data-field="redeliveryPort" value="${item.redeliveryPort || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Commence Date</label>
-          <input class="inspector-input mono" type="date" data-field="commenceDate" value="${item.commenceDate || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Expiry Date</label>
-          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Contract Status</label>
-          <select class="inspector-select" data-field="status">
-            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
-            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
-            <option ${item.status === 'Terminated' ? 'selected' : ''}>Terminated</option>
-          </select>
-        </div>
-      `;
-      break;
-    }
-
-    case 'vcs': {
-      icon = '📜';
-      titleText = `Voyage Contract Fixture Details : ${item.contractId} (Voyage: ${item.voyageNumber})`;
-      fieldsHtml = `
-        <div class="inspector-field">
-          <label class="inspector-label">Contract ID</label>
-          <input class="inspector-input mono" value="${item.contractId}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Voyage Number</label>
-          <input class="inspector-input mono" data-field="voyageNumber" value="${item.voyageNumber || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Assigned Vessel</label>
-          <select class="inspector-select" data-field="vesselImo">
-            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Charterer Name</label>
-          <input class="inspector-input" data-field="chartererName" value="${item.chartererName || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Load Port</label>
-          <input class="inspector-input" data-field="loadPort" value="${item.loadPort || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Discharge Port</label>
-          <input class="inspector-input" data-field="dischargePort" value="${item.dischargePort || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Cargo Type</label>
-          <input class="inspector-input" data-field="cargoType" value="${item.cargoType || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Cargo Quantity (MT)</label>
-          <input class="inspector-input mono" type="number" data-field="quantityMT" value="${item.quantityMT || 0}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Freight Rate ($/MT)</label>
-          <input class="inspector-input mono" type="number" data-field="freightRateUSD" value="${item.freightRateUSD || 0}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Laycan Start</label>
-          <input class="inspector-input mono" type="date" data-field="laycanStart" value="${item.laycanStart || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Laycan End</label>
-          <input class="inspector-input mono" type="date" data-field="laycanEnd" value="${item.laycanEnd || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Voyage Status</label>
-          <select class="inspector-select" data-field="status">
-            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
-            <option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option>
-            <option ${item.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-          </select>
-        </div>
-      `;
-      break;
-    }
-
-    case 'riders': {
-      icon = '✒️';
-      titleText = `Rider Clause Specification : ${item.title} (${item.clauseId})`;
-      fieldsHtml = `
-        <div class="inspector-field">
-          <label class="inspector-label">Clause ID</label>
-          <input class="inspector-input mono" value="${item.clauseId}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Clause Title <span class="req">*</span></label>
-          <input class="inspector-input" data-field="title" value="${item.title || ''}" required>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Category</label>
-          <input class="inspector-input" data-field="category" value="${item.category || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Associated Contract Ref</label>
-          <input class="inspector-input mono" data-field="associatedContractId" value="${item.associatedContractId || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Precedence Status</label>
-          <select class="inspector-select" data-field="overridesPrintedForm">
-            <option value="true" ${item.overridesPrintedForm ? 'selected' : ''}>✓ Overrides Printed Form</option>
-            <option value="false" ${!item.overridesPrintedForm ? 'selected' : ''}>Standard Form Precedence</option>
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Clause Status</label>
-          <select class="inspector-select" data-field="status">
-            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
-            <option ${item.status === 'Archived' ? 'selected' : ''}>Archived</option>
-          </select>
-        </div>
+        <div class="inspector-sec-head">🗺️ Section 2: Fleet Operational Scope</div>
         <div class="inspector-field full">
-          <label class="inspector-label">Full Rider Clause Legal Text</label>
-          <textarea class="inspector-textarea" data-field="riderText" rows="3">${item.riderText || ''}</textarea>
-        </div>
-      `;
-      break;
-    }
-
-    case 'insurance': {
-      icon = '🛡️';
-      titleText = `Marine Insurance Policy Details : ${item.policyNo} (${item.vesselName})`;
-      fieldsHtml = `
-        <div class="inspector-field">
-          <label class="inspector-label">Policy Number</label>
-          <input class="inspector-input mono" value="${item.policyNo}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Insured Vessel</label>
-          <select class="inspector-select" data-field="vesselImo">
-            ${state.data.vessels.map(v => `<option value="${v.imo}" ${item.vesselImo === v.imo ? 'selected' : ''}>${v.name} (${v.imo})</option>`).join('')}
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Policy Type</label>
-          <select class="inspector-select" data-field="policyType">
-            <option ${item.policyType === 'P&I Club' ? 'selected' : ''}>P&I Club</option>
-            <option ${item.policyType === 'Hull & Machinery' ? 'selected' : ''}>Hull & Machinery</option>
-            <option ${item.policyType === 'War Risk' ? 'selected' : ''}>War Risk</option>
-            <option ${item.policyType === 'Loss of Hire' ? 'selected' : ''}>Loss of Hire</option>
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Insurer / P&I Club Name</label>
-          <input class="inspector-input" data-field="insurer" value="${item.insurer || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Insured Limit</label>
-          <input class="inspector-input mono" data-field="insuredLimit" value="${item.insuredLimit || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Policy Deductible</label>
-          <input class="inspector-input mono" data-field="deductible" value="${item.deductible || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Policy Expiry Date</label>
-          <input class="inspector-input mono" type="date" data-field="expiryDate" value="${item.expiryDate || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Policy Status</label>
-          <select class="inspector-select" data-field="status">
-            <option ${item.status === 'Active' ? 'selected' : ''}>Active</option>
-            <option ${item.status === 'Pending Renewal' ? 'selected' : ''}>Pending Renewal</option>
-            <option ${item.status === 'Expired' ? 'selected' : ''}>Expired</option>
-          </select>
+          <label class="inspector-label">Fleet Description & Trade Route Scope</label>
+          <textarea class="inspector-textarea" data-field="description" rows="2">${item.description || ''}</textarea>
         </div>
       `;
       break;
@@ -1494,7 +1633,7 @@ function getInspectorHtml(category, id, item) {
         </div>
         <div class="inspector-actions">
           <button type="submit" class="btn-c btn-c-primary btn-sm">💾 SAVE RECORD CHANGES</button>
-          <button type="button" class="btn-c btn-c-sec btn-sm" onclick="window.renderApp()">🔄 RESET</button>
+          <button type="button" class="btn-c btn-c-sec btn-sm" onclick="window.renderApp()">🔄 RESET RECORD</button>
         </div>
       </div>
       <div class="inspector-grid">

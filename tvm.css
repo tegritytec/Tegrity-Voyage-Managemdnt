@@ -605,6 +605,23 @@ table.dtable tr:hover td { background: rgba(255, 255, 255, 0.035); }
   flex-shrink: 0;
 }
 
+.inspector-sec-head {
+  grid-column: 1 / -1;
+  font-family: 'Archivo', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--signal);
+  padding: 0.5rem 0 0.25rem;
+  border-bottom: 1px dashed var(--edge);
+  margin-top: 0.5rem;
+  margin-bottom: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .inspector-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
