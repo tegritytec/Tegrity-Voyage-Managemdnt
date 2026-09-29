@@ -2,47 +2,122 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — TegrityVoyageManagement (TVM)</title>
-  <link rel="stylesheet" href="tvm.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Login — Tegrity Voyage Management Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tvm.css">
 </head>
-<body class="login-body">
-  <div class="login-card">
-    <div class="login-header">
-      <div class="brand-logo">
-        <span class="logo-icon">🏢</span>
-        <span class="brand-name">TVM</span>
+<body class="login-body env-signal">
+
+  <!-- Ambient Radial Background Glow -->
+  <div class="login-ambient-glow"></div>
+
+  <div class="login-shell">
+    <!-- TOP AMBIENT THEME PICKER -->
+    <div class="login-top-bar">
+      <div class="envpick" title="Switch Console Ambient Theme">
+        <button style="background:#9BE564" aria-pressed="true" onclick="window.setConsoleTheme('signal')" title="Signal Theme"></button>
+        <button style="background:#4FE0E8" aria-pressed="false" onclick="window.setConsoleTheme('aurora')" title="Aurora Theme"></button>
+        <button style="background:#FFB454" aria-pressed="false" onclick="window.setConsoleTheme('ember')" title="Ember Theme"></button>
       </div>
-      <h2>TegrityVoyageManagement</h2>
-      <p>Enterprise Maritime Management & Contract Administration Platform</p>
     </div>
-    <form id="login-form">
-      <div class="form-group">
-        <label class="form-label" for="username">Username / Email</label>
-        <input class="form-input" type="text" id="username" value="admin" required placeholder="Enter your username">
+
+    <!-- MAIN LOGIN CARD -->
+    <div class="login-card">
+      <div class="login-header">
+        <div class="orb">
+          <span>⚙️</span>
+        </div>
+        <div class="wordmark" style="text-align:center;">
+          <b>TEGRITY VOYAGE MANAGEMENT</b>
+          <span>INTELLIGENCE CONSOLE PORTAL · BUILD 1.0</span>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="password">Password</label>
-        <input class="form-input" type="password" id="password" value="admin" required placeholder="Enter your password">
+
+      <div class="login-sub-h">
+        <div class="login-title">AUTHENTICATE CONSOLE ACCESS</div>
+        <div class="login-sub">Enter authorized fleet operator credentials to access TVM Console.</div>
       </div>
-      <div id="login-error" class="error-msg" style="display:none;"></div>
-      <button type="submit" class="btn btn-primary btn-block">Sign In to TVM Portal</button>
-    </form>
-    <div class="login-footer">
-      <p>TegrityTec Shipping Pte. Ltd. © 2026. All rights reserved.</p>
+
+      <!-- Quick Demo Credentials Auto-Fill Badge -->
+      <div class="demo-credential-badge" onclick="window.quickFillCredentials()" title="Click to auto-fill admin credentials">
+        <span class="badge-icon">🔑</span>
+        <div>
+          <b>DEMO ADMIN CREDENTIALS</b>
+          <span>Username: <code>admin</code> | Password: <code>admin</code> (Click to Fill)</span>
+        </div>
+      </div>
+
+      <form id="login-form" style="margin-top: 1rem;">
+        <div class="login-field">
+          <label class="login-label">👤 Username / Email Address</label>
+          <input class="login-input mono" type="text" id="username" value="admin" required placeholder="Enter username (admin)">
+        </div>
+
+        <div class="login-field">
+          <label class="login-label">🔑 Security Password</label>
+          <div style="position:relative;">
+            <input class="login-input mono" type="password" id="password" value="admin" required placeholder="Enter password (admin)">
+            <button type="button" class="pwd-toggle" onclick="window.togglePasswordVisibility()" title="Toggle Password Visibility">👁️</button>
+          </div>
+        </div>
+
+        <div id="login-error" class="login-error-alert" style="display:none;"></div>
+
+        <button type="submit" id="btn-submit-login" class="btn-c btn-c-primary login-btn-block">
+          <span>⚡ ACCESS MANAGEMENT CONSOLE</span>
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="login-card-footer">
+        <span class="st signal" style="font-size:0.6rem">🟢 256-BIT ENCRYPTED SESSION</span>
+        <span style="font-size:0.65rem;color:var(--ink-3)">GCP Cloud Run (voyageiq-dev)</span>
+      </div>
+    </div>
+
+    <div class="login-footer-ribbon">
+      TegrityTec Shipping Pte. Ltd. © 2026 · Tegrity Voyage Management Console
     </div>
   </div>
 
   <script>
+    window.setConsoleTheme = function(themeName) {
+      document.body.className = `login-body env-${themeName}`;
+      document.querySelectorAll('.envpick button').forEach(btn => {
+        const isThis = btn.getAttribute('onclick').includes(themeName);
+        btn.setAttribute('aria-pressed', isThis ? 'true' : 'false');
+      });
+    };
+
+    window.quickFillCredentials = function() {
+      document.getElementById('username').value = 'admin';
+      document.getElementById('password').value = 'admin';
+      const errorDiv = document.getElementById('login-error');
+      errorDiv.style.display = 'none';
+    };
+
+    window.togglePasswordVisibility = function() {
+      const pwdInput = document.getElementById('password');
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+      } else {
+        pwdInput.type = 'password';
+      }
+    };
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       const errorDiv = document.getElementById('login-error');
-      
+      const submitBtn = document.getElementById('btn-submit-login');
+
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.7';
+
       try {
         const res = await fetch('/api/login', {
           method: 'POST',
@@ -53,12 +128,16 @@
         if (res.ok && data.success) {
           window.location.href = '/';
         } else {
-          errorDiv.style.display = 'block';
-          errorDiv.textContent = data.error || 'Invalid credentials';
+          errorDiv.style.display = 'flex';
+          errorDiv.innerHTML = `⚠️ ${data.error || 'Invalid credentials'}`;
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
         }
       } catch (err) {
-        errorDiv.style.display = 'block';
-        errorDiv.textContent = 'Connection error. Please try again.';
+        errorDiv.style.display = 'flex';
+        errorDiv.innerHTML = '⚠️ Connection error. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
       }
     });
   </script>

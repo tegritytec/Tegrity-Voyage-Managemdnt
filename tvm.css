@@ -728,3 +728,229 @@ table.dtable tbody tr.row-selected td {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ── LOGIN CONSOLE PAGE UI-UX FORMAT ──────────────────────────── */
+.login-body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--abyss);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.login-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--signal-glow) 0%, rgba(3, 14, 23, 0) 70%);
+  pointer-events: none;
+  opacity: 0.25;
+  filter: blur(40px);
+}
+
+.login-shell {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 440px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.85rem;
+}
+
+.login-card {
+  width: 100%;
+  background: linear-gradient(175deg, rgba(12, 36, 54, 0.98), rgba(6, 25, 42, 0.98));
+  border: 1px solid var(--edge-hi);
+  border-top: 2px solid var(--signal);
+  border-radius: var(--r);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px var(--signal-glow);
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--edge);
+  padding-bottom: 1.1rem;
+  margin-bottom: 1.1rem;
+}
+
+.login-sub-h {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.login-title {
+  font-family: 'Archivo', sans-serif;
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.login-sub {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.demo-credential-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(155, 229, 100, 0.08);
+  border: 1px dashed var(--signal);
+  border-radius: var(--r);
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.demo-credential-badge:hover {
+  background: rgba(155, 229, 100, 0.16);
+  box-shadow: 0 0 12px var(--signal-glow);
+}
+
+.demo-credential-badge .badge-icon {
+  font-size: 1.1rem;
+}
+
+.demo-credential-badge b {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--signal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-credential-badge span {
+  font-size: 0.7rem;
+  color: var(--ink-2);
+}
+
+.demo-credential-badge code {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--signal);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.login-field {
+  margin-bottom: 0.9rem;
+}
+
+.login-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 0.35rem;
+}
+
+.login-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  color: var(--ink);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--r);
+  font-size: 0.82rem;
+  font-family: 'IBM Plex Sans', sans-serif;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.login-input.mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.login-input:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 12px var(--signal-glow);
+  background: var(--surface-2);
+}
+
+.pwd-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+}
+
+.pwd-toggle:hover {
+  color: var(--ink);
+}
+
+.login-error-alert {
+  background: rgba(255, 92, 108, 0.12);
+  border: 1px solid var(--rose);
+  color: var(--rose);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--r);
+  font-size: 0.74rem;
+  font-family: 'IBM Plex Sans', sans-serif;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.login-btn-block {
+  width: 100%;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 0.3rem;
+}
+
+.login-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--edge);
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+}
+
+.login-footer-ribbon {
+  margin-top: 1.25rem;
+  font-size: 0.68rem;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+
