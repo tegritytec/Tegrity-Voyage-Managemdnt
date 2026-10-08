@@ -32,8 +32,52 @@ const STORAGE_KEYS = {
   insurance: 'tvm_insurance_policies',
   validations: 'tvm_contract_validations',
   auditLogs: 'tvm_validation_audit_logs',
-  researchDb: 'tvm_clause_research_db'
+  researchDb: 'tvm_clause_research_db',
+  stagedDocs: 'tvm_staged_documents_v1'
 };
+
+const DEFAULT_STAGED_DOCUMENTS = [
+  {
+    id: 'STG-1001',
+    name: 'BIMCO_2026_Tanker_Charter_Addendum_V3.pdf',
+    size: '1.4 MB',
+    type: 'pdf',
+    loadedAt: '2026-10-08 19:30',
+    selected: true,
+    status: 'Staged',
+    analysisResultDocId: null
+  },
+  {
+    id: 'STG-1002',
+    name: 'Email_Rider_WarRisk_RedSea_Passage.msg',
+    size: '420 KB',
+    type: 'msg',
+    loadedAt: '2026-10-08 19:42',
+    selected: true,
+    status: 'Staged',
+    analysisResultDocId: null
+  },
+  {
+    id: 'STG-1003',
+    name: 'Speed_Consumption_Warranty_Clause_Revision.txt',
+    size: '185 KB',
+    type: 'txt',
+    loadedAt: '2026-10-08 20:05',
+    selected: true,
+    status: 'Staged',
+    analysisResultDocId: null
+  },
+  {
+    id: 'STG-1004',
+    name: 'EU_ETS_Carbon_Allowance_Sharing_CP_Rider.docx',
+    size: '2.1 MB',
+    type: 'docx',
+    loadedAt: '2026-10-08 18:15',
+    selected: false,
+    status: 'Analyzed',
+    analysisResultDocId: 'VAL-2026-001'
+  }
+];
 
 function loadState(key, fallback) {
   const cached = localStorage.getItem(key);
@@ -50,6 +94,8 @@ export const state = {
   activeTheme: 'signal',
   selectedEntity: null, // { category: 'vessels' | 'masters' | ..., id: '...' }
   selectedValidationDocId: 'ALL',
+  ingestTab: 'upload',
+  stagedDocs: loadState(STORAGE_KEYS.stagedDocs, DEFAULT_STAGED_DOCUMENTS),
   filters: {
     org: 'ALL',
     fleetType: 'ALL',
@@ -75,7 +121,11 @@ export const state = {
 };
 
 function saveState(entityKey) {
-  localStorage.setItem(STORAGE_KEYS[entityKey], JSON.stringify(state.data[entityKey]));
+  if (entityKey === 'stagedDocs') {
+    localStorage.setItem(STORAGE_KEYS.stagedDocs, JSON.stringify(state.stagedDocs));
+  } else if (state.data[entityKey]) {
+    localStorage.setItem(STORAGE_KEYS[entityKey], JSON.stringify(state.data[entityKey]));
+  }
 }
 
 // Global Theme Switcher Handler
@@ -1074,6 +1124,109 @@ function renderInsuranceView(insurance) {
   `;
 }
 
+// ── RECENTLY LOADED DOCUMENTS STAGING QUEUE RENDERER ──
+function renderStagedDocumentsQueue() {
+  const stagedDocs = state.stagedDocs || [];
+  if (stagedDocs.length === 0) {
+    return `
+      <div class="staged-docs-container" style="text-align:center;padding:1.25rem;color:var(--ink-3);font-size:0.75rem">
+        📂 No documents currently staged in queue. Select or drag & drop files above to load documents for analysis.
+      </div>
+    `;
+  }
+
+  const selectedDocs = stagedDocs.filter(d => d.selected);
+  const selectedCount = selectedDocs.length;
+  const allSelected = selectedCount === stagedDocs.length && stagedDocs.length > 0;
+
+  return `
+    <div class="staged-docs-container">
+      <div class="staged-docs-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="staged-master-checkbox" ${allSelected ? 'checked' : ''} onchange="window.toggleSelectAllStagedDocs(this.checked)" style="cursor:pointer;accent-color:var(--signal)" title="Select/Deselect All">
+          <span style="font-family:'Archivo';font-size:0.8rem;font-weight:700;color:var(--ink)">
+            📂 RECENTLY LOADED CONTRACT DOCUMENTS (${stagedDocs.length} FILES)
+          </span>
+          <span class="mono" style="font-size:0.68rem;color:var(--signal);background:rgba(155,229,100,0.12);padding:1px 6px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
+            ${selectedCount} Selected for Analysis
+          </span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-c btn-c-sec btn-xs" onclick="window.toggleSelectAllStagedDocs(true)">☑ Select All</button>
+          <button class="btn-c btn-c-sec btn-xs" onclick="window.toggleSelectAllStagedDocs(false)">☐ Deselect All</button>
+          <button class="btn-c btn-c-rose btn-xs" onclick="window.clearStagedDocs()">🗑️ Clear Queue</button>
+        </div>
+      </div>
+
+      <div class="staged-docs-list">
+        ${stagedDocs.map(doc => {
+          const isPdf = doc.type === 'pdf';
+          const isDocx = doc.type === 'docx' || doc.type === 'doc';
+          const isMsg = doc.type === 'msg';
+          const fmtClass = isPdf ? 'fmt-pdf' : isDocx ? 'fmt-docx' : isMsg ? 'fmt-msg' : 'fmt-txt';
+
+          const isAnalyzing = doc.status === 'Analyzing';
+          const isAnalyzed = doc.status === 'Analyzed';
+
+          return `
+            <div class="staged-doc-row ${doc.selected ? 'selected' : ''}">
+              <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px">
+                <input type="checkbox" ${doc.selected ? 'checked' : ''} onchange="window.toggleSelectStagedDoc('${doc.id}')" style="cursor:pointer;accent-color:var(--signal)">
+                <span class="staged-fmt-badge ${fmtClass}">${doc.type}</span>
+                <div style="overflow:hidden;text-overflow:ellipsis">
+                  <div style="font-size:0.78rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${doc.name}">${doc.name}</div>
+                  <div style="font-size:0.68rem;color:var(--ink-3)">Size: <b>${doc.size}</b> · Loaded: <b>${doc.loadedAt}</b></div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px">
+                ${isAnalyzing ? `
+                  <span class="staged-status-pill staged-status-analyzing">
+                    <span class="pip live dot"></span> Analyzing...
+                  </span>
+                ` : isAnalyzed ? `
+                  <span class="staged-status-pill staged-status-analyzed">
+                    ✔ Audited
+                  </span>
+                ` : `
+                  <span class="staged-status-pill staged-status-staged">
+                    ⏳ Staged & Ready
+                  </span>
+                `}
+
+                <div style="display:flex;gap:4px">
+                  ${isAnalyzed && doc.analysisResultDocId ? `
+                    <button class="btn-c btn-c-primary btn-xs" onclick="window.filterValidationByDoc('${doc.analysisResultDocId}')" title="Inspect Validation Matrix Record">🔍 View Analysis</button>
+                  ` : `
+                    <button class="btn-c btn-c-primary btn-xs" onclick="window.analyzeSingleStagedDoc('${doc.id}')" title="Trigger immediate analysis for this document">⚡ Analyze</button>
+                  `}
+                  <button class="btn-c btn-c-sec btn-xs" onclick="window.removeStagedDoc('${doc.id}')" title="Remove from queue">🗑️</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- BATCH TRIGGER ACTION BAR -->
+      <div class="batch-action-bar">
+        <div>
+          <div style="font-family:'Archivo';font-size:0.82rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
+            ⚡ TRIGGER BATCH CONTRACT VALIDATION ANALYSIS
+          </div>
+          <div style="font-size:0.7rem;color:var(--ink-3)">
+            Executes Tegrity AI clause extraction, completeness verification & BIMCO/MARPOL governance risk analysis on selected files.
+          </div>
+        </div>
+
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.triggerBatchAnalysis()" ${selectedCount === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+          ⚡ ANALYZE SELECTED DOCUMENTS (${selectedCount})
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 // ── 10. CONTRACT VALIDATION MODULE ──
 function renderContractValidationView(filtered) {
   const validations = filtered.validations || state.data.validations || [];
@@ -1135,16 +1288,19 @@ function renderContractValidationView(filtered) {
                ondragleave="window.handleDragLeave(event)" 
                ondrop="window.handleFileDrop(event)"
                onclick="window.triggerBrowseFile()">
-            <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg">
+            <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg" multiple>
             <div class="ingest-icon">📂</div>
-            <div class="ingest-title">Drag & Drop Contract File Here, or Click to Browse</div>
-            <div class="ingest-desc">Supports PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
+            <div class="ingest-title">Drag & Drop Contract File(s) Here, or Click to Browse</div>
+            <div class="ingest-desc">Supports Multi-File Selection: PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
             <div style="margin-top:0.75rem">
               <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
                 📁 BROWSE LOCAL FILES
               </button>
             </div>
           </div>
+
+          <!-- RECENTLY LOADED DOCUMENTS STAGING QUEUE -->
+          ${renderStagedDocumentsQueue()}
         ` : `
           <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
           <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
@@ -1183,6 +1339,7 @@ function renderContractValidationView(filtered) {
           </div>
         </div>
       </div>
+
 
       <!-- SECTION 1: CONTRACT COMPLETENESS & VERIFICATION MATRIX -->
       <div style="margin-bottom:1.5rem">
@@ -2857,7 +3014,7 @@ window.handleFileDrop = function(e) {
   const dropzone = document.getElementById('ingest-dropzone');
   if (dropzone) dropzone.classList.remove('dragover');
   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    window.processIngestedFile(e.dataTransfer.files[0]);
+    window.addFilesToStagingQueue(e.dataTransfer.files);
   }
 };
 
@@ -2868,13 +3025,83 @@ window.triggerBrowseFile = function() {
 
 window.handleFileSelected = function(e) {
   if (e.target.files && e.target.files.length > 0) {
-    window.processIngestedFile(e.target.files[0]);
+    window.addFilesToStagingQueue(e.target.files);
   }
 };
 
-window.processIngestedFile = function(file) {
-  const fileName = file.name || 'Contract_Addendum_2026.pdf';
-  const docRef = `INGEST-${Date.now().toString().slice(-4)} / ${fileName.slice(0, 15).toUpperCase()}`;
+window.addFilesToStagingQueue = function(files) {
+  if (!files || files.length === 0) return;
+  const fileArray = Array.from(files);
+  
+  const newDocs = fileArray.map(file => {
+    const ext = (file.name.split('.').pop() || 'doc').toLowerCase();
+    const type = ['pdf','docx','doc','msg','txt'].includes(ext) ? ext : 'doc';
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    const sizeStr = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${Math.round(file.size / 1024)} KB`;
+    
+    return {
+      id: `STG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: file.name,
+      size: sizeStr,
+      type: type,
+      loadedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      selected: true,
+      status: 'Staged',
+      analysisResultDocId: null
+    };
+  });
+
+  state.stagedDocs.unshift(...newDocs);
+  saveState('stagedDocs');
+  window.showToast(`📥 Added ${newDocs.length} document(s) to Recently Loaded Queue.`);
+  renderApp();
+};
+
+window.toggleSelectStagedDoc = function(id) {
+  const doc = state.stagedDocs.find(d => d.id === id);
+  if (doc) {
+    doc.selected = !doc.selected;
+    saveState('stagedDocs');
+    renderApp();
+  }
+};
+
+window.toggleSelectAllStagedDocs = function(statusBool) {
+  state.stagedDocs.forEach(d => { d.selected = statusBool; });
+  saveState('stagedDocs');
+  renderApp();
+};
+
+window.removeStagedDoc = function(id) {
+  state.stagedDocs = state.stagedDocs.filter(d => d.id !== id);
+  saveState('stagedDocs');
+  window.showToast('Document removed from queue.');
+  renderApp();
+};
+
+window.clearStagedDocs = function() {
+  state.stagedDocs = [];
+  saveState('stagedDocs');
+  window.showToast('Staged documents queue cleared.');
+  renderApp();
+};
+
+window.analyzeSingleStagedDoc = function(id) {
+  state.stagedDocs.forEach(d => { d.selected = (d.id === id); });
+  saveState('stagedDocs');
+  window.triggerBatchAnalysis();
+};
+
+window.triggerBatchAnalysis = function() {
+  const selectedDocs = state.stagedDocs.filter(d => d.selected && d.status !== 'Analyzing');
+  if (selectedDocs.length === 0) {
+    window.showToast('⚠️ Please select at least one document from the queue to analyze.');
+    return;
+  }
+
+  // Set selected docs status to Analyzing
+  selectedDocs.forEach(d => { d.status = 'Analyzing'; });
+  renderApp();
 
   const banner = document.getElementById('ingest-processing-banner');
   const statusText = document.getElementById('ingest-status-text');
@@ -2891,67 +3118,81 @@ window.processIngestedFile = function(file) {
     if (pctText) pctText.textContent = `${pct}%`;
 
     if (pct === 25 && statusText) {
-      statusText.textContent = `Extracting clauses & detecting amendments in ${fileName}...`;
-      if (stepsList) stepsList.innerHTML = `<span>[✔] Document Structure Parsed</span> <span>[🔄] Clause Extraction</span> <span>[⏳] Governance Rules</span>`;
+      statusText.textContent = `Extracting clauses & structure for ${selectedDocs.length} selected document(s)...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Files Loaded</span> <span>[🔄] Clause Parsing (${selectedDocs.length} files)</span> <span>[⏳] Governance Rules</span>`;
     } else if (pct === 50 && statusText) {
-      statusText.textContent = `Comparing against BIMCO 2023 & MARPOL Annex VI guidelines...`;
-      if (stepsList) stepsList.innerHTML = `<span>[✔] Clauses Extracted</span> <span>[✔] BIMCO Rules Matched</span> <span>[🔄] Risk Calculation</span>`;
+      statusText.textContent = `Verifying against BIMCO 2023, MARPOL & LMAA governance rules...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Clauses Extracted</span> <span>[✔] Rule Matching</span> <span>[🔄] Financial Exposure Calculation</span>`;
     } else if (pct === 75 && statusText) {
-      statusText.textContent = `Summarizing potential financial risk exposure & Tegrity recommendations...`;
-      if (stepsList) stepsList.innerHTML = `<span>[✔] Risk Calculated</span> <span>[✔] Recommendations Generated</span> <span>[🔄] Enriching Repository</span>`;
+      statusText.textContent = `Generating Tegrity AI recommendations & updating Contract Matrix...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Financial Risk Calculated</span> <span>[✔] AI Recs Generated</span> <span>[🔄] Matrix Update</span>`;
     } else if (pct >= 100) {
       clearInterval(timer);
-      if (statusText) statusText.textContent = `Ingestion & Audit Complete! Document added to Repository.`;
+      if (statusText) statusText.textContent = `Batch Contract Analysis Complete! ${selectedDocs.length} document(s) verified.`;
 
-      const newDocId = `VAL-${Date.now().toString().slice(-4)}`;
-      const newValidation = {
-        id: newDocId,
-        docRef: docRef,
-        docType: fileName.endsWith('.pdf') ? 'Voyage Charter Addendum' : 'Time Charter Rider',
-        associatedContractId: 'VC-2026-001',
-        title: `Ingested Doc: ${fileName}`,
-        counterparty: 'Global Chartering Partners',
-        governingLaw: 'English Law',
-        completenessScore: 88,
-        totalClauses: 20,
-        passedClauses: 17,
-        missingClausesCount: 2,
-        conflictingClausesCount: 1,
-        highRiskCount: 1,
-        mediumRiskCount: 1,
-        lowRiskCount: 1,
-        financialExposureUSD: 75000,
-        auditDate: new Date().toISOString().split('T')[0],
-        status: 'Action Required'
-      };
+      selectedDocs.forEach((doc, idx) => {
+        const newDocId = `VAL-${Date.now().toString().slice(-4)}-${idx + 1}`;
+        const docRef = `INGEST-${Date.now().toString().slice(-4)}-0${idx + 1} / ${doc.name.slice(0, 14).toUpperCase()}`;
+        
+        const isPdf = doc.type === 'pdf';
+        const isWarRisk = doc.name.toLowerCase().includes('war') || doc.name.toLowerCase().includes('redsea');
+        const isEts = doc.name.toLowerCase().includes('ets') || doc.name.toLowerCase().includes('carbon');
 
-      const newAuditLog = {
-        auditId: `VAL-AUD-${Date.now().toString().slice(-4)}`,
-        docId: newDocId,
-        docRef: docRef,
-        clauseRef: 'Clause 38 - Ingested Carbon Footprint & Fuel Warranty',
-        category: 'Environmental Compliance',
-        issueType: 'Missing Required Clause',
-        proposedText: `[Extracted from ${fileName}] Fuel delivery samples shall comply with local port regulations.`,
-        tegrityRecommendation: 'Incorporate BIMCO 2020 Fuel Sulfur & MARPOL Annex VI Sampling Clause: Charterers warrant all fuel supplied strictly complies with <0.50% S with retained sealed MARPOL samples.',
-        riskLevel: 'High',
-        riskSummary: 'Missing explicit MARPOL sample retention terms creates $75,000 risk of port state detention fines.',
-        financialExposureUSD: 75000,
-        actionTaken: 'DEFERRED',
-        actionNotes: `Ingested from ${fileName} on ${new Date().toISOString().split('T')[0]}. Pending commercial team review.`,
-        referencePrecedent: 'MARPOL Annex VI Regulation 18 / BIMCO 2020 Fuel Clause'
-      };
+        const newValidation = {
+          id: newDocId,
+          docRef: docRef,
+          docType: isPdf ? 'Voyage Charter Addendum' : 'Time Charter Rider',
+          associatedContractId: isEts ? 'CP-2026-001' : 'VC-2026-001',
+          title: `Audited: ${doc.name}`,
+          counterparty: 'Global Maritime Charterers Ltd',
+          governingLaw: 'English Law / LMAA Arbitration',
+          completenessScore: isWarRisk ? 85 : isEts ? 90 : 88,
+          totalClauses: 22,
+          passedClauses: isWarRisk ? 18 : 20,
+          missingClausesCount: isWarRisk ? 2 : 1,
+          conflictingClausesCount: 1,
+          highRiskCount: isWarRisk ? 2 : 1,
+          mediumRiskCount: 1,
+          lowRiskCount: 1,
+          financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
+          auditDate: new Date().toISOString().split('T')[0],
+          status: 'Action Required'
+        };
 
-      state.data.validations.unshift(newValidation);
-      state.data.auditLogs.unshift(newAuditLog);
+        const newAuditLog = {
+          auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}`,
+          docId: newDocId,
+          docRef: docRef,
+          clauseRef: isWarRisk ? 'Clause 24 - Red Sea Transit & War Risk Premium' : isEts ? 'Clause 42 - EU ETS Allowance Sharing & Compliance' : 'Clause 38 - Fuel Warranty & MARPOL Sampling',
+          category: isWarRisk ? 'War & Geo-Political Risk' : isEts ? 'Environmental Compliance' : 'Bunker Quality & MARPOL',
+          issueType: isWarRisk ? 'Conflicting Risk Terms' : 'Missing Standard Wording',
+          proposedText: `[Extracted from ${doc.name}] Owners and Charterers share operational costs as mutually agreed.`,
+          tegrityRecommendation: isWarRisk 
+            ? 'Incorporate CONWARTIME 2013 / BIMCO War Risks Clause for Time Charters: Charterers pay all additional war risk premiums and crew bonus.'
+            : 'Incorporate BIMCO 2023 Emission Trading Scheme (ETS) Allowances Clause for Time Charters: Charterers provide EU Allowances (EUA) monthly.',
+          riskLevel: 'High',
+          riskSummary: isWarRisk ? 'Ambiguous cost sharing wording exposes Owners to $125,000 unbudgeted war risk insurance premiums.' : 'Lack of monthly allowance transfer schedule creates $60,000 EUA shortfall risk.',
+          financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
+          actionTaken: 'DEFERRED',
+          actionNotes: `Analyzed from batch ingestion of "${doc.name}" on ${new Date().toISOString().split('T')[0]}.`,
+          referencePrecedent: isWarRisk ? 'CONWARTIME 2013 / LMAA Award 2024/02' : 'BIMCO ETS Clause 2023 / EU Directive 2023/959'
+        };
+
+        state.data.validations.unshift(newValidation);
+        state.data.auditLogs.unshift(newAuditLog);
+
+        doc.status = 'Analyzed';
+        doc.analysisResultDocId = newDocId;
+      });
 
       saveState('validations');
       saveState('auditLogs');
+      saveState('stagedDocs');
 
-      window.showToast(`📥 Document "${fileName}" ingested & audited successfully! Added to repository.`);
+      window.showToast(`✅ Successfully analyzed ${selectedDocs.length} contract document(s)! Validation Matrix & Audit Logs updated.`);
       renderApp();
     }
-  }, 250);
+  }, 200);
 };
 
 window.processSystemFixtureIngestion = function() {

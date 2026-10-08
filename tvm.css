@@ -1312,6 +1312,93 @@ table.dtable tbody tr.row-selected td {
   box-shadow: 0 0 8px var(--signal-glow);
 }
 
+/* ── RECENTLY LOADED DOCUMENTS STAGING QUEUE STYLES ────────────────────────── */
+.staged-docs-container {
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.staged-docs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--edge);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.staged-doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.45rem;
+  transition: all 0.2s ease;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.staged-doc-row:hover {
+  border-color: var(--edge-hi);
+  background: rgba(12, 36, 54, 0.95);
+}
+
+.staged-doc-row.selected {
+  border-color: rgba(155, 229, 100, 0.4);
+  background: rgba(155, 229, 100, 0.05);
+}
+
+.staged-fmt-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.fmt-pdf { background: rgba(224, 86, 122, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+.fmt-docx { background: rgba(79, 172, 254, 0.2); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3); }
+.fmt-msg { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+.fmt-txt { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(203, 213, 225, 0.3); }
+.fmt-doc { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
+
+.staged-status-pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.staged-status-staged { background: rgba(251, 191, 36, 0.15); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+.staged-status-analyzing { background: rgba(0, 242, 254, 0.15); color: var(--cyan); border: 1px solid rgba(0, 242, 254, 0.3); }
+.staged-status-analyzed { background: rgba(155, 229, 100, 0.15); color: var(--signal); border: 1px solid rgba(155, 229, 100, 0.3); }
+
+.batch-action-bar {
+  background: var(--abyss);
+  border: 1px solid var(--signal);
+  border-radius: var(--r);
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  box-shadow: 0 0 15px rgba(155, 229, 100, 0.12);
+}
+
 
 
 
