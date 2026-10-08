@@ -555,7 +555,7 @@ export function renderApp() {
 // Render Tegrity Intelligence Engine Style Metric Tiles
 function renderSummaryStats(filtered) {
   const mainRailHeader = document.getElementById('main-rail-header');
-  if (state.activeTab === 'contractvalidation') {
+  if (state.activeTab === 'contractvalidation' || state.activeTab === 'historicalrepo') {
     if (mainRailHeader) mainRailHeader.style.display = 'none';
   } else {
     if (mainRailHeader) mainRailHeader.style.display = 'flex';
@@ -589,12 +589,9 @@ function renderSummaryStats(filtered) {
     if (selectedDocIds.size > 0) {
       vals = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
       audits = (state.data.auditLogs || []).filter(a => selectedDocIds.has(a.docId));
-    } else if (selectedStaged.length > 0) {
-      vals = (filtered.validations || state.data.validations || []).slice(0, selectedStaged.length);
-      audits = (filtered.auditLogs || state.data.auditLogs || []).filter(a => vals.some(v => v.id === a.docId));
     } else {
-      vals = filtered.validations || state.data.validations || [];
-      audits = filtered.auditLogs || state.data.auditLogs || [];
+      vals = [];
+      audits = [];
     }
 
     const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
@@ -603,12 +600,7 @@ function renderSummaryStats(filtered) {
     const acceptedCount = audits.filter(a => a.actionTaken === 'ACCEPTED' || a.actionTaken === 'MODIFIED').length;
     const adoptPct = audits.length > 0 ? Math.round((acceptedCount / audits.length) * 100) : 0;
 
-    const fileCountLabel = selectedStaged.length > 0
-      ? `${selectedStaged.length} Selected Staged File(s)`
-      : selectedDocIds.size > 0
-      ? `${selectedDocIds.size} Selected Doc(s)`
-      : `${vals.length} Audited Doc(s)`;
-
+    const fileCountLabel = `${vals.length} Selected Audited Doc(s)`;
     if (readoutTotal) readoutTotal.textContent = vals.length;
     if (railCount) railCount.textContent = `5 TILES ACTIVE (${fileCountLabel.toUpperCase()})`;
 
@@ -621,7 +613,7 @@ function renderSummaryStats(filtered) {
           </div>
           <div class="t-big">${vals.length}</div>
           <div class="t-lab">SELECTED FILES</div>
-          <div class="t-sub">${fileCountLabel}</div>
+          <div class="t-sub">${vals.length} Audited File(s) Active</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
@@ -650,26 +642,111 @@ function renderSummaryStats(filtered) {
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Financial Risk Exposure for Selected Files">
+        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Financial Exposure for Selected Files">
           <div class="t-top">
-            <div class="t-ico">💰</div>
+            <div class="t-ico">💵</div>
             <span class="pip warn">EXPOSURE</span>
           </div>
-          <div class="t-big">$${(totalExp / 1000).toFixed(0)}k</div>
-          <div class="t-lab">FINANCIAL RISK</div>
-          <div class="t-sub">Liability in Selected Files</div>
+          <div class="t-big">$${Math.round(totalExp / 1000)}K</div>
+          <div class="t-lab">FINANCIAL EXPOSURE</div>
+          <div class="t-sub">$${totalExp.toLocaleString()} USD Risk</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
+        </div>
+
+        <div class="tile" onclick="window.openTileDrillDown('val_adopt')" title="Click to drill down into AI Recommendation Adoption Rate">
+          <div class="t-top">
+            <div class="t-ico">⚡</div>
+            <span class="pip ok">ADOPTION</span>
+          </div>
+          <div class="t-big">${adoptPct}%</div>
+          <div class="t-lab">RECS ADOPTED</div>
+          <div class="t-sub">${acceptedCount} / ${audits.length} Accepted/Modified</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  if (state.activeTab === 'historicalrepo') {
+    let vals = [];
+    if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
+      const scopeSet = new Set(state.activeDocumentScope);
+      vals = (state.data.validations || []).filter(v => scopeSet.has(v.id));
+    } else {
+      vals = filtered.validations || state.data.validations || [];
+    }
+    const valIds = new Set(vals.map(v => v.id));
+    const audits = (state.data.auditLogs || []).filter(a => valIds.has(a.docId));
+
+    const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
+    const highRisks = audits.filter(a => a.riskLevel === 'High').length;
+    const totalExp = audits.reduce((a, b) => a + (b.financialExposureUSD || 0), 0);
+    const acceptedCount = audits.filter(a => a.actionTaken === 'ACCEPTED' || a.actionTaken === 'MODIFIED').length;
+    const adoptPct = audits.length > 0 ? Math.round((acceptedCount / audits.length) * 100) : 0;
+
+    if (readoutTotal) readoutTotal.textContent = vals.length;
+    if (railCount) railCount.textContent = `5 TILES ACTIVE (${vals.length} HISTORICAL REPOSITORY DOCS)`;
+
+    if (statsContainer) {
+      statsContainer.innerHTML = `
+        <div class="tile" onclick="window.openTileDrillDown('val_docs')" title="Click to drill down into Historical Audited Contracts">
+          <div class="t-top">
+            <div class="t-ico">📜</div>
+            <span class="pip ok">HISTORICAL</span>
+          </div>
+          <div class="t-big">${vals.length}</div>
+          <div class="t-lab">REPOSITORY DOCS</div>
+          <div class="t-sub">${vals.length} Historical Contracts Active</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
+        </div>
+
+        <div class="tile" onclick="window.openTileDrillDown('val_index')" title="Click to drill down into Historical Completeness Index">
+          <div class="t-top">
+            <div class="t-ico">📊</div>
+            <span class="pip live">INDEX</span>
+          </div>
+          <div class="t-big">${avgScore}%</div>
+          <div class="t-lab">COMPLETENESS INDEX</div>
+          <div class="t-sub">Historical Average Compliance</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
+        </div>
+
+        <div class="tile" onclick="window.openTileDrillDown('val_gaps')" title="Click to drill down into Historical High Risk Gaps">
+          <div class="t-top">
+            <div class="t-ico">⚠️</div>
+            <span class="pip warn">GAPS</span>
+          </div>
+          <div class="t-big">${highRisks}</div>
+          <div class="t-lab">HIGH RISK GAPS</div>
+          <div class="t-sub">${audits.length} Historical Audit Logs</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_recs')" title="Click to drill down into AI Recommendation Adoption Rate for Selected Files">
+        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Historical Financial Risk Exposure">
+          <div class="t-top">
+            <div class="t-ico">💵</div>
+            <span class="pip warn">EXPOSURE</span>
+          </div>
+          <div class="t-big">$${Math.round(totalExp / 1000)}K</div>
+          <div class="t-lab">FINANCIAL EXPOSURE</div>
+          <div class="t-sub">$${totalExp.toLocaleString()} USD Risk</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
+        </div>
+
+        <div class="tile" onclick="window.openTileDrillDown('val_adopt')" title="Click to drill down into AI Recommendation Adoption Rate">
           <div class="t-top">
             <div class="t-ico">⚡</div>
-            <span class="pip ok">AI RECS</span>
+            <span class="pip ok">ADOPTION</span>
           </div>
           <div class="t-big">${adoptPct}%</div>
-          <div class="t-lab">RECS ADOPTED</div>
-          <div class="t-sub">${acceptedCount} of ${audits.length} Items Adopted</div>
+          <div class="t-sub">${acceptedCount} / ${audits.length} Accepted/Modified</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
@@ -762,6 +839,7 @@ function renderActiveView(filtered) {
     case 'masterinstructions': viewPane.innerHTML = renderMasterView(filtered.masters); break;
     case 'insurance': viewPane.innerHTML = renderInsuranceView(filtered.insurance); break;
     case 'contractvalidation': viewPane.innerHTML = renderContractValidationView(filtered); break;
+    case 'historicalrepo': viewPane.innerHTML = renderHistoricalRepoView(filtered); break;
     default: viewPane.innerHTML = renderOrgView(filtered.orgs);
   }
 }
@@ -1292,9 +1370,33 @@ function renderStagedDocumentsQueue() {
 }
 
 // ── 10. CONTRACT VALIDATION MODULE ──
+// ── 10. CONTRACT VALIDATION MODULE (LIVE INGESTION & PIPELINE) ──
 function renderContractValidationView(filtered) {
-  const validations = filtered.validations || state.data.validations || [];
-  const auditLogs = filtered.auditLogs || state.data.auditLogs || [];
+  const stagedDocs = state.stagedDocs || [];
+  const selectedStaged = stagedDocs.filter(d => d.selected);
+
+  let selectedDocIds = new Set();
+  selectedStaged.forEach(d => {
+    if (d.analysisResultDocId) selectedDocIds.add(d.analysisResultDocId);
+  });
+
+  if (state.selectedValidationDocId && state.selectedValidationDocId !== 'ALL') {
+    selectedDocIds.add(state.selectedValidationDocId);
+  }
+
+  if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
+    state.activeDocumentScope.forEach(id => selectedDocIds.add(id));
+  }
+
+  let validations = [];
+  if (selectedDocIds.size > 0) {
+    validations = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
+  } else {
+    validations = [];
+  }
+
+  const validIds = new Set(validations.map(v => v.id));
+  const auditLogs = (state.data.auditLogs || []).filter(a => validIds.has(a.docId));
   const researchDb = filtered.researchDb || state.data.researchDb || [];
 
   const selectedDocId = state.selectedValidationDocId || 'ALL';
@@ -1303,7 +1405,6 @@ function renderContractValidationView(filtered) {
     : auditLogs.filter(a => a.docId === selectedDocId);
 
   const activeIngestTab = state.ingestTab || 'upload';
-  const valMode = state.validationMode || 'new';
 
   const systemFixtures = [
     ...(state.data.tcs || []).map(t => ({ id: t.contractId, name: `${t.contractId} · ${t.vesselName} (Time Charter)` })),
@@ -1317,7 +1418,7 @@ function renderContractValidationView(filtered) {
       <!-- SUB-HEADER BAR WITH ACTIONS -->
       <div class="sub-h-bar" style="flex-wrap:wrap;gap:0.75rem">
         <div>
-          <div class="sub-h-title">🔍 Contract Validation & Verification Engine</div>
+          <div class="sub-h-title">🔍 Contract Document Ingestion & Validation Pipeline</div>
           <div class="sub-h-sub">Verifying completeness, identifying missing/conflicting clauses & recommending corrections based on BIMCO, MARPOL & LMAA governance</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
@@ -1327,157 +1428,91 @@ function renderContractValidationView(filtered) {
         </div>
       </div>
 
-      <!-- VALIDATION MODE SELECTOR BAR -->
-      <div style="background:var(--surface-2);border:1px solid var(--edge);border-radius:var(--r);padding:0.65rem 0.85rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.65rem">
-        <div style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap">
-          <span style="font-size:0.72rem;font-weight:700;color:var(--ink-3);font-family:'Archivo'">VALIDATION ENGINE MODE:</span>
-          <div class="ingest-tab-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none">
-            <button class="ingest-tab-btn ${valMode === 'new' ? 'active' : ''}" onclick="window.setValidationMode('new')">
-              🆕 New Document Analysis (Live Ingestion)
-            </button>
-            <button class="ingest-tab-btn ${valMode === 'historical' ? 'active' : ''}" onclick="window.setValidationMode('historical')">
-              📜 Historical Document Repository & Audit
-            </button>
-          </div>
-        </div>
-
-        ${state.activeDocumentScope ? `
+      <!-- CONTRACT DOCUMENT INGESTION & LIVE PIPELINE -->
+      <div class="ingest-box-container">
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:6px">
-            <span class="mono" style="font-size:0.68rem;color:var(--signal);background:rgba(155,229,100,0.14);padding:3px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.35)">
-              🎯 CONSOLE SCOPE: ${state.activeDocumentScope.length} DOC(S) ACTIVE ACROSS ALL SUBMODULES
-            </span>
-            <button class="btn-c btn-c-rose btn-xs" onclick="window.clearConsoleScope()">🧹 CLEAR SCOPE & SHOW ALL</button>
+            <span>📥</span> CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
           </div>
-        ` : `
-          <span style="font-size:0.68rem;color:var(--ink-3)">Console Scope: <b>All Repository Contracts Active</b></span>
-        `}
-      </div>
-
-      ${valMode === 'new' ? `
-        <!-- MODE 1: CONTRACT DOCUMENT INGESTION & LIVE PIPELINE -->
-        <div class="ingest-box-container">
-          <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span>📥</span> CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
-            </div>
-            <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
-              TEGRITY AI ENGINE READY
-            </span>
-          </div>
-
-          <!-- Ingestion Mode Selector Tabs -->
-          <div class="ingest-tab-bar">
-            <button class="ingest-tab-btn ${activeIngestTab === 'upload' ? 'active' : ''}" onclick="window.switchIngestTab('upload')">
-              📁 Browse / Drag & Drop Local File(s)
-            </button>
-            <button class="ingest-tab-btn ${activeIngestTab === 'system' ? 'active' : ''}" onclick="window.switchIngestTab('system')">
-              📜 Select Existing System Fixture / Agreement
-            </button>
-          </div>
-
-          ${activeIngestTab === 'upload' ? `
-            <!-- DRAG AND DROP & BROWSE FILE UPLOADER -->
-            <div class="ingest-dropzone" id="ingest-dropzone" 
-                 ondragover="window.handleDragOver(event)" 
-                 ondragleave="window.handleDragLeave(event)" 
-                 ondrop="window.handleFileDrop(event)"
-                 onclick="window.triggerBrowseFile()">
-              <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg" multiple>
-              <div class="ingest-icon">📂</div>
-              <div class="ingest-title">Drag & Drop Contract File(s) Here, or Click to Browse</div>
-              <div class="ingest-desc">Supports Multi-File Selection: PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
-              <div style="margin-top:0.75rem">
-                <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
-                  📁 BROWSE LOCAL FILES
-                </button>
-              </div>
-            </div>
-
-            <!-- RECENTLY LOADED DOCUMENTS STAGING QUEUE -->
-            ${renderStagedDocumentsQueue()}
-          ` : `
-            <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
-            <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-              <div style="flex:1;min-width:250px">
-                <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT SYSTEM CONTRACT / FIXTURE RECORD:</label>
-                <select id="ingest-system-fixture-select" class="c-select-xs" style="width:100%;font-size:0.78rem">
-                  ${systemFixtures.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
-                </select>
-              </div>
-              <div style="display:flex;align-items:flex-end;margin-top:1.2rem">
-                <button class="btn-c btn-c-primary btn-sm" onclick="window.processSystemFixtureIngestion()">
-                  ⚡ PROCESS & VALIDATE FIXTURE
-                </button>
-              </div>
-            </div>
-          `}
-
-          <!-- PROCESSING ANIMATION / PROGRESS INDICATOR (If Active) -->
-          <div id="ingest-processing-banner" style="display:none" class="ingest-progress-box">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
-              <div style="font-weight:700;color:var(--signal);font-size:0.8rem;display:flex;align-items:center;gap:6px">
-                <span class="pip live dot"></span>
-                <span id="ingest-status-text">Ingesting document & extracting clauses...</span>
-              </div>
-              <span class="mono" style="font-size:0.75rem;color:var(--ink)" id="ingest-pct-text">25%</span>
-            </div>
-
-            <div class="val-progress-bar" style="height:6px">
-              <div id="ingest-progress-fill" class="val-progress-fill high" style="width:25%"></div>
-            </div>
-
-            <div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--ink-2);margin-top:0.5rem" id="ingest-steps-list">
-              <span>[✔] Document Structure Parsed</span>
-              <span>[🔄] Verifying Governance Clauses</span>
-              <span>[⏳] Calculating Financial Risk Exposure</span>
-            </div>
-          </div>
+          <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
+            TEGRITY AI ENGINE READY
+          </span>
         </div>
-      ` : `
-        <!-- MODE 2: HISTORICAL DOCUMENT REPOSITORY & AUDIT ARCHIVE -->
-        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-            <div>
-              <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
-                📜 HISTORICAL EXECUTED CONTRACTS & ADDENDUMS ARCHIVE
-              </div>
-              <div style="font-size:0.7rem;color:var(--ink-3)">
-                Review historical validation records, pre-populate dashboard statistics, and conduct cross-fixture trend analysis.
-              </div>
-            </div>
-            <div style="display:flex;gap:0.5rem">
-              <button class="btn-c btn-c-primary btn-xs" onclick="window.setConsoleScope(state.data.validations.map(v=>v.id))">
-                🎯 SCOPE CONSOLE TO ALL HISTORICAL DOCS
+
+        <!-- Ingestion Mode Selector Tabs -->
+        <div class="ingest-tab-bar">
+          <button class="ingest-tab-btn ${activeIngestTab === 'upload' ? 'active' : ''}" onclick="window.switchIngestTab('upload')">
+            📁 Browse / Drag & Drop Local File(s)
+          </button>
+          <button class="ingest-tab-btn ${activeIngestTab === 'system' ? 'active' : ''}" onclick="window.switchIngestTab('system')">
+            📜 Select Existing System Fixture / Agreement
+          </button>
+        </div>
+
+        ${activeIngestTab === 'upload' ? `
+          <!-- DRAG AND DROP & BROWSE FILE UPLOADER -->
+          <div class="ingest-dropzone" id="ingest-dropzone" 
+               ondragover="window.handleDragOver(event)" 
+               ondragleave="window.handleDragLeave(event)" 
+               ondrop="window.handleFileDrop(event)"
+               onclick="window.triggerBrowseFile()">
+            <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg" multiple>
+            <div class="ingest-icon">📂</div>
+            <div class="ingest-title">Drag & Drop Contract File(s) Here, or Click to Browse</div>
+            <div class="ingest-desc">Supports Multi-File Selection: PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
+            <div style="margin-top:0.75rem">
+              <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
+                📁 BROWSE LOCAL FILES
               </button>
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.75rem">
-            ${(state.data.validations || []).map(hv => `
-              <div style="background:var(--surface-2);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                  <span class="mono" style="font-size:0.68rem;color:var(--signal);font-weight:700">${hv.docRef}</span>
-                  <span class="st ${hv.completenessScore >= 88 ? 'good' : 'warn'}" style="font-size:0.62rem">${hv.completenessScore}% Index</span>
-                </div>
-                <div style="font-size:0.78rem;font-weight:700;color:var(--ink);margin-bottom:4px">${hv.title}</div>
-                <div style="font-size:0.68rem;color:var(--ink-3);margin-bottom:6px">
-                  Counterparty: <b>${hv.counterparty}</b> · Date: <b>${hv.auditDate}</b>
-                </div>
-                <div style="display:flex;gap:4px">
-                  <button class="btn-c btn-c-primary btn-xs" style="padding:2px 6px" onclick="window.setConsoleScope(['${hv.id}'])">🎯 Scope Console</button>
-                  <button class="btn-c btn-c-sec btn-xs" style="padding:2px 6px" onclick="window.openExecutiveSummary(['${hv.id}'])">📊 Executive Summary</button>
-                </div>
-              </div>
-            `).join('')}
+          <!-- RECENTLY LOADED DOCUMENTS STAGING QUEUE -->
+          ${renderStagedDocumentsQueue()}
+        ` : `
+          <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
+          <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <div style="flex:1;min-width:250px">
+              <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT SYSTEM CONTRACT / FIXTURE RECORD:</label>
+              <select id="ingest-system-fixture-select" class="c-select-xs" style="width:100%;font-size:0.78rem">
+                ${systemFixtures.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+              </select>
+            </div>
+            <div style="display:flex;align-items:flex-end;margin-top:1.2rem">
+              <button class="btn-c btn-c-primary btn-sm" onclick="window.processSystemFixtureIngestion()">
+                ⚡ PROCESS & VALIDATE FIXTURE
+              </button>
+            </div>
+          </div>
+        `}
+
+        <!-- PROCESSING ANIMATION / PROGRESS INDICATOR (If Active) -->
+        <div id="ingest-processing-banner" style="display:none" class="ingest-progress-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+            <div style="font-weight:700;color:var(--signal);font-size:0.8rem;display:flex;align-items:center;gap:6px">
+              <span class="pip live dot"></span>
+              <span id="ingest-status-text">Ingesting document & extracting clauses...</span>
+            </div>
+            <span class="mono" style="font-size:0.75rem;color:var(--ink)" id="ingest-pct-text">25%</span>
+          </div>
+
+          <div class="val-progress-bar" style="height:6px">
+            <div id="ingest-progress-fill" class="val-progress-fill high" style="width:25%"></div>
+          </div>
+
+          <div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--ink-2);margin-top:0.5rem" id="ingest-steps-list">
+            <span>[✔] Document Structure Parsed</span>
+            <span>[🔄] Verifying Governance Clauses</span>
+            <span>[⏳] Calculating Financial Risk Exposure</span>
           </div>
         </div>
-      `}
+      </div>
 
       <!-- OPERATIONAL METRIC TILES (POSITIONED JUST ABOVE CONTRACT COMPLETENESS & RISK AUDIT MATRIX) -->
       <div style="margin-bottom:1.5rem">
         <div class="rail-h" style="margin-bottom:0.5rem">
           <h2 id="rail-title">OPERATIONAL METRIC TILES</h2>
-          <span class="n" id="rail-count">5 TILES ACTIVE (SELECTED FILES ONLY)</span>
+          <span class="n" id="rail-count">5 TILES ACTIVE (${validations.length} SELECTED AUDITED FILES)</span>
           <div class="line"></div>
         </div>
         <div id="summary-stats" class="tile-grid"></div>
@@ -1495,8 +1530,26 @@ function renderContractValidationView(filtered) {
             </button>
           ` : ''}
         </div>
+
         <div class="val-grid-2">
-          ${validations.map(v => {
+          ${validations.length === 0 ? `
+            <div style="background:var(--surface);border:1px dashed var(--edge-2);padding:2.5rem 1.5rem;border-radius:var(--r);text-align:center;color:var(--ink-2);grid-column:1/-1">
+              <div style="font-size:2rem;margin-bottom:0.4rem">📂</div>
+              <div style="font-size:0.9rem;font-weight:700;color:var(--ink);margin-bottom:0.3rem">No Contract Documents Selected for Analysis</div>
+              <div style="font-size:0.75rem;color:var(--ink-3);max-width:550px;margin:0 auto 1.25rem;line-height:1.4">
+                Check one or more document boxes in the <b>Contract Document Ingestion & Validation Pipeline</b> above, then click <b>⚡ ANALYZE SELECTED DOCUMENTS</b> to perform completeness verification and view the risk audit matrix.
+              </div>
+              ${(state.stagedDocs || []).filter(d => d.selected).length > 0 ? `
+                <button class="btn-c btn-c-primary btn-sm" onclick="window.triggerBatchAnalysis()">
+                  ⚡ ANALYZE SELECTED DOCUMENTS (${(state.stagedDocs || []).filter(d => d.selected).length})
+                </button>
+              ` : `
+                <button class="btn-c btn-c-sec btn-sm" onclick="window.toggleSelectAllStagedDocs(true)">
+                  ☑ Select All Staged Queue Documents
+                </button>
+              `}
+            </div>
+          ` : validations.map(v => {
             const isSelected = selectedDocId === v.id;
             const fillClass = v.completenessScore >= 90 ? 'high' : v.completenessScore >= 80 ? 'med' : 'low';
             return `
@@ -1517,6 +1570,27 @@ function renderContractValidationView(filtered) {
 
                 <div class="val-progress-bar">
                   <div class="val-progress-fill ${fillClass}" style="width: ${v.completenessScore}%"></div>
+                </div>
+
+                <!-- GAP ASSESSMENT & RISK RATIONALE SUMMARY BLOCK -->
+                <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.6rem;border-radius:4px;margin-top:0.65rem;font-size:0.72rem">
+                  <div style="font-size:0.68rem;font-weight:700;color:var(--signal);margin-bottom:3px;display:flex;align-items:center;justify-content:space-between">
+                    <span>🔍 GAP ASSESSMENT SUMMARY</span>
+                    <span style="color:var(--rose);font-weight:700">$${(v.financialExposureUSD || 0).toLocaleString()} EXPOSURE</span>
+                  </div>
+                  <div style="color:var(--ink-2);line-height:1.4;margin-bottom:4px">
+                    ${v.gapAssessmentSummary || `${v.missingClausesCount || 0} missing clause(s) and ${v.conflictingClausesCount || 0} conflicting clause(s) identified.`}
+                  </div>
+                  ${v.missingClausesSummary ? `
+                    <div style="font-size:0.68rem;color:var(--rose);margin-top:2px">
+                      ⚠️ <b>Missing Clauses:</b> ${v.missingClausesSummary}
+                    </div>
+                  ` : ''}
+                  ${v.conflictingClausesSummary ? `
+                    <div style="font-size:0.68rem;color:var(--amber);margin-top:2px">
+                      ⚡ <b>Conflicting Clauses:</b> ${v.conflictingClausesSummary}
+                    </div>
+                  ` : ''}
                 </div>
 
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem">
@@ -1652,6 +1726,222 @@ function renderContractValidationView(filtered) {
   `;
 }
 
+// ── 11. HISTORICAL DOCUMENT REPOSITORY & AUDIT MODULE ──
+function renderHistoricalRepoView(filtered) {
+  let validations = [];
+  if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
+    const scopeSet = new Set(state.activeDocumentScope);
+    validations = (state.data.validations || []).filter(v => scopeSet.has(v.id));
+  } else {
+    validations = filtered.validations || state.data.validations || [];
+  }
+
+  const auditLogs = filtered.auditLogs || state.data.auditLogs || [];
+  const researchDb = filtered.researchDb || state.data.researchDb || [];
+
+  const selectedDocId = state.selectedValidationDocId || 'ALL';
+  const displayAuditLogs = selectedDocId === 'ALL' 
+    ? auditLogs 
+    : auditLogs.filter(a => a.docId === selectedDocId);
+
+  return `
+    <div class="dwrap">
+      <!-- SUB-HEADER BAR WITH ACTIONS -->
+      <div class="sub-h-bar" style="flex-wrap:wrap;gap:0.75rem">
+        <div>
+          <div class="sub-h-title">📜 Historical Document Repository & Audit Archive</div>
+          <div class="sub-h-sub">Comprehensive repository of historical executed contract addendums, past validation audits, and cross-fixture compliance analytics</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn-c btn-c-primary btn-sm" onclick="window.openExecutiveSummary([${validations.map(v => `'${v.id}'`).join(',')}])">📊 VIEW EXECUTIVE SUMMARY FOR ALL (${validations.length})</button>
+          <button class="btn-c btn-c-sec btn-sm" onclick="window.setConsoleScope(state.data.validations.map(v=>v.id))">🎯 SCOPE CONSOLE TO ALL HISTORICAL DOCS</button>
+          <button class="btn-c btn-c-rose btn-sm" onclick="window.clearConsoleScope()">🧹 CLEAR SCOPE</button>
+        </div>
+      </div>
+
+      <!-- OPERATIONAL METRIC TILES FOR HISTORICAL REPOSITORY -->
+      <div style="margin-bottom:1.5rem">
+        <div class="rail-h" style="margin-bottom:0.5rem">
+          <h2 id="rail-title">HISTORICAL REPOSITORY AUDIT METRICS</h2>
+          <span class="n" id="rail-count">5 TILES ACTIVE (${validations.length} HISTORICAL CONTRACTS)</span>
+          <div class="line"></div>
+        </div>
+        <div id="summary-stats" class="tile-grid"></div>
+      </div>
+
+      <!-- SECTION 1: HISTORICAL CONTRACT VALIDATION ARCHIVE -->
+      <div style="margin-bottom:1.5rem">
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>📜</span> HISTORICAL AUDITED CONTRACTS & ADDENDUMS ARCHIVE (${validations.length} RECORDS)
+          </div>
+          <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
+            PRE-LOADED SYSTEM ARCHIVE ACTIVE
+          </span>
+        </div>
+
+        <div class="val-grid-2">
+          ${validations.map(v => {
+            const isSelected = selectedDocId === v.id;
+            const fillClass = v.completenessScore >= 90 ? 'high' : v.completenessScore >= 80 ? 'med' : 'low';
+            return `
+              <div class="val-card ${isSelected ? 'row-selected' : ''}" style="${isSelected ? 'border-color:var(--signal);box-shadow:0 0 10px var(--signal-glow);' : ''}">
+                <div class="val-card-header">
+                  <div>
+                    <span class="mono" style="font-size:0.72rem;color:var(--signal);font-weight:600">${v.docRef}</span>
+                    <h4 style="font-size:0.85rem;color:var(--ink);margin:2px 0">${v.title}</h4>
+                    <span style="font-size:0.7rem;color:var(--ink-3)">Counterparty: <b>${v.counterparty}</b> · Law: <b>${v.governingLaw}</b> · Date: <b>${v.auditDate}</b></span>
+                  </div>
+                  <span class="st ${v.status === 'Audit Complete' ? 'good' : 'warn'}">${v.status}</span>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.72rem;margin-top:0.3rem">
+                  <span>Completeness Index: <b style="color:var(--ink)">${v.completenessScore}%</b></span>
+                  <span class="mono" style="color:var(--cyan)">${v.passedClauses} / ${v.totalClauses} Clauses Verified</span>
+                </div>
+
+                <div class="val-progress-bar">
+                  <div class="val-progress-fill ${fillClass}" style="width: ${v.completenessScore}%"></div>
+                </div>
+
+                <!-- GAP ASSESSMENT & RISK RATIONALE SUMMARY BLOCK -->
+                <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.6rem;border-radius:4px;margin-top:0.65rem;font-size:0.72rem">
+                  <div style="font-size:0.68rem;font-weight:700;color:var(--signal);margin-bottom:3px;display:flex;align-items:center;justify-content:space-between">
+                    <span>🔍 GAP ASSESSMENT SUMMARY</span>
+                    <span style="color:var(--rose);font-weight:700">$${(v.financialExposureUSD || 0).toLocaleString()} EXPOSURE</span>
+                  </div>
+                  <div style="color:var(--ink-2);line-height:1.4;margin-bottom:4px">
+                    ${v.gapAssessmentSummary || `${v.missingClausesCount || 0} missing clause(s) and ${v.conflictingClausesCount || 0} conflicting clause(s) identified.`}
+                  </div>
+                  ${v.missingClausesSummary ? `
+                    <div style="font-size:0.68rem;color:var(--rose);margin-top:2px">
+                      ⚠️ <b>Missing Clauses:</b> ${v.missingClausesSummary}
+                    </div>
+                  ` : ''}
+                  ${v.conflictingClausesSummary ? `
+                    <div style="font-size:0.68rem;color:var(--amber);margin-top:2px">
+                      ⚡ <b>Conflicting Clauses:</b> ${v.conflictingClausesSummary}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem">
+                  <div style="display:flex;gap:6px">
+                    <span class="risk-badge risk-badge-high">${v.highRiskCount} High Risk</span>
+                    <span class="risk-badge risk-badge-med">${v.mediumRiskCount} Med Risk</span>
+                    <span class="risk-badge risk-badge-low">${v.lowRiskCount} Low Risk</span>
+                  </div>
+                  <div style="text-align:right">
+                    <span style="font-size:0.68rem;color:var(--ink-3)">Financial Risk:</span>
+                    <b class="mono" style="color:var(--rose);margin-left:4px">$${(v.financialExposureUSD || 0).toLocaleString()}</b>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.65rem;flex-wrap:wrap;gap:0.4rem">
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-c btn-c-primary btn-xs" onclick="window.openExecutiveSummary(['${v.id}'])">📊 Summary</button>
+                    <button class="btn-c btn-c-sec btn-xs" onclick="window.setConsoleScope(['${v.id}'])">🎯 Scope Console</button>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-c btn-c-sec btn-xs" onclick="window.selectEntity('validations', '${v.id}')">Inspect</button>
+                    <button class="btn-c ${isSelected ? 'btn-c-primary' : 'btn-c-sec'} btn-xs" onclick="window.filterValidationByDoc('${isSelected ? 'ALL' : v.id}')">
+                      ${isSelected ? 'Reset Filter' : '🔍 Scope Items'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- SECTION 2: HISTORICAL CLAUSE VERIFICATION LOGS -->
+      <div style="margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
+          <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
+            <span>📋</span> HISTORICAL CLAUSE VERIFICATION LOGS & AUDIT TRAIL (${displayAuditLogs.length} ITEMS)
+          </div>
+          ${selectedDocId !== 'ALL' ? `<button class="btn-c btn-c-sec btn-xs" onclick="window.filterValidationByDoc('ALL')">Show All Documents</button>` : ''}
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem">
+          ${displayAuditLogs.map(item => {
+            const riskClass = item.riskLevel === 'High' ? 'risk-badge-high' : item.riskLevel === 'Medium' ? 'risk-badge-med' : 'risk-badge-low';
+            const actionClass = item.actionTaken === 'ACCEPTED' ? 'action-badge-accepted' : item.actionTaken === 'MODIFIED' ? 'action-badge-modified' : item.actionTaken === 'DEFERRED' ? 'action-badge-deferred' : 'action-badge-rejected';
+            
+            return `
+              <div class="val-card" style="border-left:4px solid ${item.riskLevel === 'High' ? 'var(--rose)' : item.riskLevel === 'Medium' ? 'var(--amber)' : 'var(--good)'}">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.5rem">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                      <span class="mono" style="font-size:0.7rem;color:var(--signal);font-weight:600">${item.docRef}</span>
+                      <span style="font-size:0.68rem;color:var(--ink-3)">·</span>
+                      <span style="font-size:0.75rem;font-weight:700;color:var(--ink)">${item.clauseRef}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:0.7rem">
+                      <span class="st info" style="font-size:0.62rem">${item.category}</span>
+                      <span style="color:var(--rose);font-weight:600">${item.issueType}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="risk-badge ${riskClass}">${item.riskLevel} RISK</span>
+                    <span class="mono" style="font-size:0.75rem;color:var(--rose);font-weight:700">$${(item.financialExposureUSD || 0).toLocaleString()} EXPOSURE</span>
+                  </div>
+                </div>
+
+                <div style="font-size:0.73rem;color:var(--ink-2);background:rgba(3,14,23,0.4);padding:0.4rem 0.6rem;border-radius:3px;margin-bottom:0.6rem">
+                  ⚠️ <b>Risk Assessment:</b> ${item.riskSummary}
+                </div>
+
+                <div class="comparison-box">
+                  <div class="comp-col">
+                    <label>📄 Proposed / Contracted Clause Wording</label>
+                    <div class="comp-text-proposed">${item.proposedText}</div>
+                  </div>
+                  <div class="comp-col">
+                    <label>⚡ Tegrity AI Recommendation & Industry Standard</label>
+                    <div class="comp-text-recommended">${item.tegrityRecommendation}</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem;flex-wrap:wrap;gap:0.5rem">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--ink-3)">Action Status:</span>
+                    <span class="action-badge ${actionClass}">${item.actionTaken}</span>
+                    <span style="color:var(--ink-3);font-size:0.68rem;margin-left:4px">${item.actionNotes || ''}</span>
+                  </div>
+                </div>
+
+                <div style="margin-top:0.4rem;font-size:0.66rem;color:var(--ink-3);display:flex;align-items:center;gap:4px">
+                  <span>Reference Legal Precedent:</span>
+                  <span class="mono" style="color:var(--cyan)">${item.referencePrecedent}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- SECTION 3: NLP MARITIME LEGAL PRECEDENT ENGINE -->
+      <div>
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;gap:6px">
+          <span>🧠</span> NLP MARITIME LEGAL RESEARCH ENGINE & CREDIBLE GOVERNANCE REFERENCES
+        </div>
+
+        <div class="nlp-search-box">
+          <span>🔎</span>
+          <input type="text" id="nlp-research-query" class="nlp-search-input" placeholder="Query legal precedents (e.g. EU ETS, Red Sea, Laytime, MARPOL, Speed & Consumption)..." onkeyup="window.filterNlpResearch(this.value)">
+          <div style="display:flex;gap:4px">
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('ets')">EU ETS</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('red sea')">War Risk</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('laytime')">Laytime</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('marpol')">MARPOL</button>
+          </div>
+        </div>
+
+  `;
+}
+
 function renderNlpPrecedentsHtml(items) {
   if (!items || items.length === 0) {
     return `<div style="text-align:center;padding:1.5rem;color:var(--ink-3);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r)">No legal precedents found matching search query.</div>`;
@@ -1703,7 +1993,8 @@ export function renderInspectorPane(filtered) {
     riderclauses: 'riders',
     masterinstructions: 'masters',
     insurance: 'insurance',
-    contractvalidation: 'validations'
+    contractvalidation: 'validations',
+    historicalrepo: 'validations'
   };
 
   const currentTabCat = tabCategoryMap[state.activeTab] || 'vessels';
@@ -3872,7 +4163,8 @@ window.jumpToEntity = function(tabName, entityId) {
     masterinstructions: 'masterinstructions',
     insurance: 'insurance',
     validations: 'contractvalidation',
-    contractvalidation: 'contractvalidation'
+    contractvalidation: 'contractvalidation',
+    historicalrepo: 'historicalrepo'
   };
 
   const targetTab = tabMap[tabName] || 'ships';
