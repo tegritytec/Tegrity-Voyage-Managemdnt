@@ -566,45 +566,35 @@ function renderSummaryStats(filtered) {
   const railCount = document.getElementById('rail-count');
 
   if (state.activeTab === 'contractvalidation') {
-    const valMode = state.validationMode || 'new';
+    // Collect selected files strictly from staged queue, document filter, or active console scope
+    const stagedDocs = state.stagedDocs || [];
+    const selectedStaged = stagedDocs.filter(d => d.selected);
+
+    let selectedDocIds = new Set();
+    selectedStaged.forEach(d => {
+      if (d.analysisResultDocId) selectedDocIds.add(d.analysisResultDocId);
+    });
+
+    if (state.selectedValidationDocId && state.selectedValidationDocId !== 'ALL') {
+      selectedDocIds.add(state.selectedValidationDocId);
+    }
+
+    if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
+      state.activeDocumentScope.forEach(id => selectedDocIds.add(id));
+    }
 
     let vals = [];
     let audits = [];
 
-    if (valMode === 'new') {
-      const stagedDocs = state.stagedDocs || [];
-      const selectedStaged = stagedDocs.filter(d => d.selected);
-
-      let selectedDocIds = new Set();
-      selectedStaged.forEach(d => {
-        if (d.analysisResultDocId) selectedDocIds.add(d.analysisResultDocId);
-      });
-
-      if (state.selectedValidationDocId && state.selectedValidationDocId !== 'ALL') {
-        selectedDocIds.add(state.selectedValidationDocId);
-      }
-
-      if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
-        state.activeDocumentScope.forEach(id => selectedDocIds.add(id));
-      }
-
-      if (selectedDocIds.size > 0) {
-        vals = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
-        audits = (state.data.auditLogs || []).filter(a => selectedDocIds.has(a.docId));
-      } else {
-        // Strict requirement: 0 files selected means 0 tiles statistics
-        vals = [];
-        audits = [];
-      }
+    if (selectedDocIds.size > 0) {
+      vals = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
+      audits = (state.data.auditLogs || []).filter(a => selectedDocIds.has(a.docId));
+    } else if (selectedStaged.length > 0) {
+      vals = (filtered.validations || state.data.validations || []).slice(0, selectedStaged.length);
+      audits = (filtered.auditLogs || state.data.auditLogs || []).filter(a => vals.some(v => v.id === a.docId));
     } else {
-      // Historical mode
-      if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
-        const scopeSet = new Set(state.activeDocumentScope);
-        vals = (state.data.validations || []).filter(v => scopeSet.has(v.id));
-      } else {
-        vals = filtered.validations || state.data.validations || [];
-      }
-      audits = (state.data.auditLogs || []).filter(a => vals.some(v => v.id === a.docId));
+      vals = filtered.validations || state.data.validations || [];
+      audits = filtered.auditLogs || state.data.auditLogs || [];
     }
 
     const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
@@ -1303,56 +1293,17 @@ function renderStagedDocumentsQueue() {
 
 // ── 10. CONTRACT VALIDATION MODULE ──
 function renderContractValidationView(filtered) {
-  const valMode = state.validationMode || 'new';
-
-  let validations = [];
-  let auditLogs = [];
-
-  if (valMode === 'new') {
-    const stagedDocs = state.stagedDocs || [];
-    const selectedStaged = stagedDocs.filter(d => d.selected);
-
-    let selectedDocIds = new Set();
-    selectedStaged.forEach(d => {
-      if (d.analysisResultDocId) selectedDocIds.add(d.analysisResultDocId);
-    });
-
-    if (state.selectedValidationDocId && state.selectedValidationDocId !== 'ALL') {
-      selectedDocIds.add(state.selectedValidationDocId);
-    }
-
-    if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
-      state.activeDocumentScope.forEach(id => selectedDocIds.add(id));
-    }
-
-    if (selectedDocIds.size > 0) {
-      validations = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
-    } else {
-      // Strictly empty when 0 selected files are analyzed
-      validations = [];
-    }
-
-    const validIds = new Set(validations.map(v => v.id));
-    auditLogs = (state.data.auditLogs || []).filter(a => validIds.has(a.docId));
-  } else {
-    // Historical Document Repository Mode
-    if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
-      const scopeSet = new Set(state.activeDocumentScope);
-      validations = (state.data.validations || []).filter(v => scopeSet.has(v.id));
-    } else {
-      validations = filtered.validations || state.data.validations || [];
-    }
-    const validIds = new Set(validations.map(v => v.id));
-    auditLogs = (state.data.auditLogs || []).filter(a => validIds.has(a.docId));
-  }
+  const validations = filtered.validations || state.data.validations || [];
+  const auditLogs = filtered.auditLogs || state.data.auditLogs || [];
+  const researchDb = filtered.researchDb || state.data.researchDb || [];
 
   const selectedDocId = state.selectedValidationDocId || 'ALL';
   const displayAuditLogs = selectedDocId === 'ALL' 
     ? auditLogs 
     : auditLogs.filter(a => a.docId === selectedDocId);
 
-  const researchDb = filtered.researchDb || state.data.researchDb || [];
   const activeIngestTab = state.ingestTab || 'upload';
+  const valMode = state.validationMode || 'new';
 
   const systemFixtures = [
     ...(state.data.tcs || []).map(t => ({ id: t.contractId, name: `${t.contractId} · ${t.vesselName} (Time Charter)` })),
@@ -1398,7 +1349,7 @@ function renderContractValidationView(filtered) {
             <button class="btn-c btn-c-rose btn-xs" onclick="window.clearConsoleScope()">🧹 CLEAR SCOPE & SHOW ALL</button>
           </div>
         ` : `
-          <span style="font-size:0.68rem;color:var(--ink-3)">Console Scope: <b>${valMode === 'new' ? 'Selected Queue Files Active' : 'All Repository Contracts Active'}</b></span>
+          <span style="font-size:0.68rem;color:var(--ink-3)">Console Scope: <b>All Repository Contracts Active</b></span>
         `}
       </div>
 
@@ -1526,7 +1477,7 @@ function renderContractValidationView(filtered) {
       <div style="margin-bottom:1.5rem">
         <div class="rail-h" style="margin-bottom:0.5rem">
           <h2 id="rail-title">OPERATIONAL METRIC TILES</h2>
-          <span class="n" id="rail-count">5 TILES ACTIVE (${valMode === 'new' ? `${validations.length} SELECTED AUDITED FILES` : 'HISTORICAL MODE'})</span>
+          <span class="n" id="rail-count">5 TILES ACTIVE (SELECTED FILES ONLY)</span>
           <div class="line"></div>
         </div>
         <div id="summary-stats" class="tile-grid"></div>
@@ -1544,26 +1495,8 @@ function renderContractValidationView(filtered) {
             </button>
           ` : ''}
         </div>
-
         <div class="val-grid-2">
-          ${validations.length === 0 ? `
-            <div style="background:var(--surface);border:1px dashed var(--edge-2);padding:2.5rem 1.5rem;border-radius:var(--r);text-align:center;color:var(--ink-2);grid-column:1/-1">
-              <div style="font-size:2rem;margin-bottom:0.4rem">📂</div>
-              <div style="font-size:0.9rem;font-weight:700;color:var(--ink);margin-bottom:0.3rem">No Contract Documents Selected for Analysis</div>
-              <div style="font-size:0.75rem;color:var(--ink-3);max-width:550px;margin:0 auto 1.25rem;line-height:1.4">
-                Check one or more document boxes in the <b>Contract Document Ingestion & Validation Pipeline</b> above, then click <b>⚡ ANALYZE SELECTED DOCUMENTS</b> to perform completeness verification and view the risk audit matrix.
-              </div>
-              ${(state.stagedDocs || []).filter(d => d.selected).length > 0 ? `
-                <button class="btn-c btn-c-primary btn-sm" onclick="window.triggerBatchAnalysis()">
-                  ⚡ ANALYZE SELECTED DOCUMENTS (${(state.stagedDocs || []).filter(d => d.selected).length})
-                </button>
-              ` : `
-                <button class="btn-c btn-c-sec btn-sm" onclick="window.toggleSelectAllStagedDocs(true)">
-                  ☑ Select All Staged Queue Documents
-                </button>
-              `}
-            </div>
-          ` : validations.map(v => {
+          ${validations.map(v => {
             const isSelected = selectedDocId === v.id;
             const fillClass = v.completenessScore >= 90 ? 'high' : v.completenessScore >= 80 ? 'med' : 'low';
             return `
@@ -1584,27 +1517,6 @@ function renderContractValidationView(filtered) {
 
                 <div class="val-progress-bar">
                   <div class="val-progress-fill ${fillClass}" style="width: ${v.completenessScore}%"></div>
-                </div>
-
-                <!-- GAP ASSESSMENT & RISK RATIONALE SUMMARY BLOCK -->
-                <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.6rem;border-radius:4px;margin-top:0.65rem;font-size:0.72rem">
-                  <div style="font-size:0.68rem;font-weight:700;color:var(--signal);margin-bottom:3px;display:flex;align-items:center;justify-content:space-between">
-                    <span>🔍 GAP ASSESSMENT SUMMARY</span>
-                    <span style="color:var(--rose);font-weight:700">$${(v.financialExposureUSD || 0).toLocaleString()} EXPOSURE</span>
-                  </div>
-                  <div style="color:var(--ink-2);line-height:1.4;margin-bottom:4px">
-                    ${v.gapAssessmentSummary || `${v.missingClausesCount || 0} missing clause(s) and ${v.conflictingClausesCount || 0} conflicting clause(s) identified.`}
-                  </div>
-                  ${v.missingClausesSummary ? `
-                    <div style="font-size:0.68rem;color:var(--rose);margin-top:2px">
-                      ⚠️ <b>Missing Clauses:</b> ${v.missingClausesSummary}
-                    </div>
-                  ` : ''}
-                  ${v.conflictingClausesSummary ? `
-                    <div style="font-size:0.68rem;color:var(--amber);margin-top:2px">
-                      ⚡ <b>Conflicting Clauses:</b> ${v.conflictingClausesSummary}
-                    </div>
-                  ` : ''}
                 </div>
 
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem">
@@ -2389,84 +2301,6 @@ function getInspectorHtml(category, id, item) {
             <option ${item.status === 'Audit Complete' ? 'selected' : ''}>Audit Complete</option>
             <option ${item.status === 'Action Required' ? 'selected' : ''}>Action Required</option>
             <option ${item.status === 'In Review' ? 'selected' : ''}>In Review</option>
-          </select>
-        </div>
-
-        <div class="inspector-sec-head">⚠️ Section 3: Gap Assessment Summary & Findings Rationale</div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Core Gap Assessment Summary</label>
-          <textarea class="inspector-textarea" data-field="gapAssessmentSummary" rows="2">${item.gapAssessmentSummary || ''}</textarea>
-        </div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Missing Clauses Summary</label>
-          <input class="inspector-input" data-field="missingClausesSummary" value="${item.missingClausesSummary || ''}">
-        </div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Conflicting Clauses Summary</label>
-          <input class="inspector-input" data-field="conflictingClausesSummary" value="${item.conflictingClausesSummary || ''}">
-        </div>
-      `;
-      break;
-    }
-
-    case 'auditLogs': {
-      icon = '📋';
-      titleText = `Clause Audit Log & Gap Assessment Item : ${item.auditId}`;
-      fieldsHtml = `
-        <div class="inspector-sec-head">📋 Section 1: Clause Audit Item Reference</div>
-        <div class="inspector-field">
-          <label class="inspector-label">Audit Log ID</label>
-          <input class="inspector-input mono" value="${item.auditId}" readonly>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Clause Reference</label>
-          <input class="inspector-input" data-field="clauseRef" value="${item.clauseRef || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Risk Category</label>
-          <input class="inspector-input" data-field="category" value="${item.category || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Discrepancy Issue Type</label>
-          <input class="inspector-input" data-field="issueType" value="${item.issueType || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Risk Level</label>
-          <select class="inspector-select" data-field="riskLevel">
-            <option ${item.riskLevel === 'High' ? 'selected' : ''}>High</option>
-            <option ${item.riskLevel === 'Medium' ? 'selected' : ''}>Medium</option>
-            <option ${item.riskLevel === 'Low' ? 'selected' : ''}>Low</option>
-          </select>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Financial Exposure (USD $)</label>
-          <input class="inspector-input mono" type="number" data-field="financialExposureUSD" value="${item.financialExposureUSD || 0}">
-        </div>
-
-        <div class="inspector-sec-head">⚠️ Section 2: Detailed Gap Risk Assessment & Recommendations</div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Risk Assessment Rationale</label>
-          <textarea class="inspector-textarea" data-field="riskSummary" rows="2">${item.riskSummary || ''}</textarea>
-        </div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Proposed / Contracted Clause Text</label>
-          <textarea class="inspector-textarea" data-field="proposedText" rows="2">${item.proposedText || ''}</textarea>
-        </div>
-        <div class="inspector-field full">
-          <label class="inspector-label">Tegrity AI Recommendation & Industry Standard</label>
-          <textarea class="inspector-textarea" data-field="tegrityRecommendation" rows="2">${item.tegrityRecommendation || ''}</textarea>
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Legal Precedent Reference</label>
-          <input class="inspector-input mono" data-field="referencePrecedent" value="${item.referencePrecedent || ''}">
-        </div>
-        <div class="inspector-field">
-          <label class="inspector-label">Action Status</label>
-          <select class="inspector-select" data-field="actionTaken">
-            <option ${item.actionTaken === 'ACCEPTED' ? 'selected' : ''}>ACCEPTED</option>
-            <option ${item.actionTaken === 'MODIFIED' ? 'selected' : ''}>MODIFIED</option>
-            <option ${item.actionTaken === 'DEFERRED' ? 'selected' : ''}>DEFERRED</option>
-            <option ${item.actionTaken === 'REJECTED' ? 'selected' : ''}>REJECTED</option>
           </select>
         </div>
       `;
@@ -3476,27 +3310,12 @@ window.triggerBatchAnalysis = function() {
           mediumRiskCount: 1,
           lowRiskCount: 1,
           financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
-          gapAssessmentSummary: isWarRisk 
-            ? `Gap Assessment: Conflicting Red Sea transit indemnity wording and missing CONWARTIME 2013 war risk clause. Unbudgeted AWRP cost risk of $125,000.`
-            : isEts 
-            ? `Gap Assessment: Missing monthly EU ETS allowance surrender schedule under EU Directive 2023/959. Exposure estimated at $60,000 EUA shortfall.`
-            : `Gap Assessment: Missing MARPOL Annex VI BDN sample retention protocol & laytime weather exception ambiguity. Financial risk of $75,000.`,
-          missingClausesSummary: isWarRisk 
-            ? 'BIMCO CONWARTIME 2013 War Risks Indemnity, Crew War Bonus Reimbursement'
-            : isEts 
-            ? 'BIMCO 2023 EU ETS Allowance Monthly Transfer Schedule'
-            : 'MARPOL Annex VI Regulation 14 BDN Sample Retention Protocol',
-          conflictingClausesSummary: isWarRisk 
-            ? 'Customary Passage Route vs Master Safety Discretion'
-            : isEts 
-            ? 'Carbon Allowance Price Cap vs Spot Market EUA Rate'
-            : 'Laytime Weather Suspension vs Continuous Rain Clause',
           auditDate: new Date().toISOString().split('T')[0],
           status: 'Action Required'
         };
 
-        const newAuditLog1 = {
-          auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}-A`,
+        const newAuditLog = {
+          auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}`,
           docId: newDocId,
           docRef: docRef,
           clauseRef: isWarRisk ? 'Clause 24 - Red Sea Transit & War Risk Premium' : isEts ? 'Clause 42 - EU ETS Allowance Sharing & Compliance' : 'Clause 38 - Fuel Warranty & MARPOL Sampling',
@@ -3514,25 +3333,8 @@ window.triggerBatchAnalysis = function() {
           referencePrecedent: isWarRisk ? 'CONWARTIME 2013 / LMAA Award 2024/02' : 'BIMCO ETS Clause 2023 / EU Directive 2023/959'
         };
 
-        const newAuditLog2 = {
-          auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}-B`,
-          docId: newDocId,
-          docRef: docRef,
-          clauseRef: isWarRisk ? 'Clause 14 - Laytime & Demurrage Notice Period' : 'Clause 19 - Weather Exception & Deck Log Verification',
-          category: 'Laytime & Demurrage',
-          issueType: 'Ambiguous Notice Window',
-          proposedText: `[Extracted from ${doc.name}] Claims shall be notified as soon as reasonably practical.`,
-          tegrityRecommendation: 'Align with BPVOY4 standard 90-day time-bar: Demurrage claims supported by SOF and time-sheets rendered within 90 days of discharge.',
-          riskLevel: 'Medium',
-          riskSummary: 'Vague notice window creates potential dispute over demurrage claim time-bar expiration.',
-          financialExposureUSD: 35000,
-          actionTaken: 'DEFERRED',
-          actionNotes: 'Pending review by Commercial Operations team.',
-          referencePrecedent: 'BPVOY4 Clause 20 / London Arbitration 2023/18'
-        };
-
         state.data.validations.unshift(newValidation);
-        state.data.auditLogs.unshift(newAuditLog1, newAuditLog2);
+        state.data.auditLogs.unshift(newAuditLog);
 
         doc.status = 'Analyzed';
         doc.analysisResultDocId = newDocId;
@@ -4198,31 +4000,6 @@ Report Link: https://tegrity-tvm-web-uoklz4qdla-uc.a.run.app/?scope=${Array.from
             <span style="color:var(--good)">${lowRiskCount} Low</span>
           </div>
         </div>
-      </div>
-
-      <!-- AUDITED DOCUMENTS GAP ASSESSMENT SUMMARY OVERVIEW -->
-      <div style="font-weight:700;font-size:0.85rem;color:var(--ink);margin-bottom:0.5rem">
-        🔍 AUDITED CONTRACT DOCUMENTS & GAP ASSESSMENT OVERVIEW (${targetDocs.length} DOCS)
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:0.6rem;margin-bottom:1rem">
-        ${targetDocs.map(doc => `
-          <div style="background:var(--surface);border:1px solid var(--edge);padding:0.6rem;border-radius:4px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <span class="mono" style="font-size:0.68rem;color:var(--signal);font-weight:700">${doc.docRef}</span>
-              <span class="st ${doc.completenessScore >= 85 ? 'good' : 'warn'}" style="font-size:0.62rem">${doc.completenessScore}% Index</span>
-            </div>
-            <div style="font-size:0.75rem;font-weight:700;color:var(--ink);margin-bottom:4px">${doc.title}</div>
-            <div style="font-size:0.7rem;color:var(--ink-2);background:rgba(3,14,23,0.5);padding:0.4rem;border-radius:3px;margin-bottom:4px;line-height:1.35">
-              ${doc.gapAssessmentSummary || `${doc.missingClausesCount || 0} missing clause(s) and ${doc.conflictingClausesCount || 0} conflicting clause(s) identified.`}
-            </div>
-            ${doc.missingClausesSummary ? `
-              <div style="font-size:0.65rem;color:var(--rose);margin-top:2px">⚠️ <b>Missing:</b> ${doc.missingClausesSummary}</div>
-            ` : ''}
-            ${doc.conflictingClausesSummary ? `
-              <div style="font-size:0.65rem;color:var(--amber);margin-top:2px">⚡ <b>Conflicting:</b> ${doc.conflictingClausesSummary}</div>
-            ` : ''}
-          </div>
-        `).join('')}
       </div>
 
       <!-- DISCREPANCIES & RECOMMENDATIONS TABLE -->
