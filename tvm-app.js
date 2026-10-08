@@ -496,11 +496,11 @@ function renderSummaryStats(filtered) {
     const adoptPct = audits.length > 0 ? Math.round((acceptedCount / audits.length) * 100) : 0;
 
     if (readoutTotal) readoutTotal.textContent = vals.length;
-    if (railCount) railCount.textContent = `5 VALIDATION METRIC TILES ACTIVE`;
+    if (railCount) railCount.textContent = `5 VALIDATION METRIC TILES ACTIVE (CLICK TO DRILL DOWN)`;
 
     if (statsContainer) {
       statsContainer.innerHTML = `
-        <div class="tile">
+        <div class="tile" onclick="window.openTileDrillDown('val_docs')" title="Click to drill down into Audited Contracts">
           <div class="t-top">
             <div class="t-ico">🔍</div>
             <span class="pip ok">DOCS</span>
@@ -509,9 +509,10 @@ function renderSummaryStats(filtered) {
           <div class="t-lab">AUDITED CONTRACTS</div>
           <div class="t-sub">${vals.length} Addendums & Agreements</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile">
+        <div class="tile" onclick="window.openTileDrillDown('val_index')" title="Click to drill down into Completeness Index">
           <div class="t-top">
             <div class="t-ico">📊</div>
             <span class="pip live">INDEX</span>
@@ -520,9 +521,10 @@ function renderSummaryStats(filtered) {
           <div class="t-lab">COMPLETENESS INDEX</div>
           <div class="t-sub">Average Audit Compliance</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile">
+        <div class="tile" onclick="window.openTileDrillDown('val_gaps')" title="Click to drill down into High & Medium Risk Gaps">
           <div class="t-top">
             <div class="t-ico">⚠️</div>
             <span class="pip warn">GAPS</span>
@@ -531,9 +533,10 @@ function renderSummaryStats(filtered) {
           <div class="t-lab">HIGH RISK GAPS</div>
           <div class="t-sub">${audits.length} Total Line Item Audits</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile">
+        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Financial Risk Exposure">
           <div class="t-top">
             <div class="t-ico">💰</div>
             <span class="pip warn">EXPOSURE</span>
@@ -542,9 +545,10 @@ function renderSummaryStats(filtered) {
           <div class="t-lab">FINANCIAL RISK</div>
           <div class="t-sub">Unhedged Liability Risk</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile">
+        <div class="tile" onclick="window.openTileDrillDown('val_recs')" title="Click to drill down into AI Recommendation Adoption Rate">
           <div class="t-top">
             <div class="t-ico">⚡</div>
             <span class="pip ok">AI RECS</span>
@@ -553,6 +557,7 @@ function renderSummaryStats(filtered) {
           <div class="t-lab">RECS ADOPTED</div>
           <div class="t-sub">${acceptedCount} of ${audits.length} Accepted/Modified</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
       `;
     }
@@ -561,12 +566,12 @@ function renderSummaryStats(filtered) {
 
   const totalScoped = filtered.orgs.length + filtered.vessels.length + filtered.tcs.length + filtered.vcs.length + filtered.insurance.length;
   if (readoutTotal) readoutTotal.textContent = totalScoped;
-  if (railCount) railCount.textContent = `5 METRIC TILES ACTIVE`;
+  if (railCount) railCount.textContent = `5 METRIC TILES ACTIVE (CLICK TO DRILL DOWN)`;
 
   if (!statsContainer) return;
 
   statsContainer.innerHTML = `
-    <div class="tile">
+    <div class="tile" onclick="window.openTileDrillDown('orgs')" title="Click to drill down into Organizations">
       <div class="t-top">
         <div class="t-ico">🏢</div>
         <span class="pip live dot">TENANTS</span>
@@ -575,9 +580,10 @@ function renderSummaryStats(filtered) {
       <div class="t-lab">ORGANIZATIONS</div>
       <div class="t-sub">${filtered.orgs.length} of ${state.data.orgs.length} Active Tenants</div>
       <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+      <span class="tile-drill-hint">🔍 Drill Down</span>
     </div>
 
-    <div class="tile">
+    <div class="tile" onclick="window.openTileDrillDown('ships')" title="Click to drill down into Fleets & Vessels">
       <div class="t-top">
         <div class="t-ico">⚓</div>
         <span class="pip info">SHIPS</span>
@@ -586,9 +592,10 @@ function renderSummaryStats(filtered) {
       <div class="t-lab">FLEETS & VESSELS</div>
       <div class="t-sub">${filtered.vessels.length} Ships Scoped (${state.data.vessels.length} Total)</div>
       <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <span class="tile-drill-hint">🔍 Drill Down</span>
     </div>
 
-    <div class="tile">
+    <div class="tile" onclick="window.openTileDrillDown('fixtures')" title="Click to drill down into Fixtures">
       <div class="t-top">
         <div class="t-ico">📜</div>
         <span class="pip warn">FIXTURES</span>
@@ -597,9 +604,10 @@ function renderSummaryStats(filtered) {
       <div class="t-lab">CONTRACT FIXTURES</div>
       <div class="t-sub">${filtered.tcs.length} Time · ${filtered.vcs.length} Voyage</div>
       <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+      <span class="tile-drill-hint">🔍 Drill Down</span>
     </div>
 
-    <div class="tile">
+    <div class="tile" onclick="window.openTileDrillDown('riders')" title="Click to drill down into Rider Clauses">
       <div class="t-top">
         <div class="t-ico">✒️</div>
         <span class="pip live">RIDERS</span>
@@ -608,9 +616,10 @@ function renderSummaryStats(filtered) {
       <div class="t-lab">RIDER CLAUSES</div>
       <div class="t-sub">${filtered.riders.length} Active Overrides</div>
       <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <span class="tile-drill-hint">🔍 Drill Down</span>
     </div>
 
-    <div class="tile">
+    <div class="tile" onclick="window.openTileDrillDown('insurance')" title="Click to drill down into Marine Insurance & Risk">
       <div class="t-top">
         <div class="t-ico">🛡️</div>
         <span class="pip ok">INSURANCE</span>
@@ -619,6 +628,7 @@ function renderSummaryStats(filtered) {
       <div class="t-lab">RISK & MASTER OPS</div>
       <div class="t-sub">P&I Policies / Master Instructions</div>
       <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+      <span class="tile-drill-hint">🔍 Drill Down</span>
     </div>
   `;
 }
@@ -2101,6 +2111,7 @@ function getInspectorHtml(category, id, item) {
           </div>
         </div>
         <div class="inspector-actions">
+          <button type="button" class="btn-c btn-c-sec btn-sm" onclick="window.openEntity360DrillDown('${category}', '${id}')">🔍 360° DRILL DOWN</button>
           <button type="submit" class="btn-c btn-c-primary btn-sm">💾 SAVE RECORD CHANGES</button>
           <button type="button" class="btn-c btn-c-sec btn-sm" onclick="window.renderApp()">🔄 RESET RECORD</button>
         </div>
@@ -2996,6 +3007,499 @@ window.processSystemFixtureIngestion = function() {
   saveState('auditLogs');
 
   window.showToast(`✔ System fixture ${selectedId} successfully processed & audited!`);
+  renderApp();
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUBMODULE DASHBOARD & ENTITY 360° DRILL-DOWN ANALYTICS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function createLargeModalContainer(title, html) {
+  const existing = document.getElementById('blade-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'blade-overlay';
+  overlay.className = 'blade-overlay';
+
+  overlay.innerHTML = `
+    <div class="blade-card-lg">
+      <div class="blade-header">
+        <div class="blade-title">${title}</div>
+        <button class="blade-close" onclick="document.getElementById('blade-overlay').remove()">✕</button>
+      </div>
+      <div>
+        ${html}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+window.openTileDrillDown = function(tileKey) {
+  const filtered = getFilteredData();
+  let title = 'Submodule Dashboard Analytical Drill-Down';
+  let html = '';
+
+  switch (tileKey) {
+    case 'val_docs': {
+      title = '🔍 Audited Contracts & Agreements Drill-Down';
+      const vals = filtered.validations || state.data.validations || [];
+      html = `
+        <div style="font-size:0.76rem;color:var(--ink-2);margin-bottom:1rem">
+          Comprehensive compliance and completeness score breakdown for all ${vals.length} audited contract addendums.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem">
+          ${vals.map(v => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.7rem;color:var(--signal)">${v.docRef}</span>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--ink);margin:2px 0">${v.title}</div>
+                <div style="font-size:0.7rem;color:var(--ink-3)">
+                  Counterparty: <b>${v.counterparty}</b> · Law: <b>${v.governingLaw}</b> · Completeness Index: <b style="color:var(--signal)">${v.completenessScore}%</b>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <span class="st ${v.status === 'Audit Complete' ? 'good' : 'warn'}">${v.status}</span>
+                <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${v.id}')">
+                  🔗 Inspect Document
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'val_index': {
+      title = '📊 Completeness Index & Clause Verification Matrix';
+      const vals = filtered.validations || state.data.validations || [];
+      const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
+      const totalPassed = vals.reduce((a, b) => a + (b.passedClauses || 0), 0);
+      const totalClauses = vals.reduce((a, b) => a + (b.totalClauses || 0), 0);
+      html = `
+        <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:0.7rem;color:var(--ink-3);text-transform:uppercase">Average Completeness Compliance Score</div>
+            <div class="mono" style="font-size:1.6rem;font-weight:800;color:var(--signal)">${avgScore}%</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:0.7rem;color:var(--ink-3)">Total Verified Clauses</div>
+            <div class="mono" style="font-size:1.1rem;font-weight:700;color:var(--cyan)">${totalPassed} / ${totalClauses} Clauses</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.65rem">
+          ${vals.map(v => `
+            <div class="entity-link-card">
+              <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="font-weight:700;color:var(--ink)">${v.title}</span>
+                  <span class="mono" style="color:var(--signal);font-weight:700">${v.completenessScore}%</span>
+                </div>
+                <div class="val-progress-bar">
+                  <div class="val-progress-fill high" style="width:${v.completenessScore}%"></div>
+                </div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${v.id}')">
+                🔗 Inspect
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'val_gaps': {
+      title = '⚠️ High & Medium Risk Clause Gaps Analytical Breakdown';
+      const audits = filtered.auditLogs || state.data.auditLogs || [];
+      const highRisks = audits.filter(a => a.riskLevel === 'High');
+      const medRisks = audits.filter(a => a.riskLevel === 'Medium');
+      html = `
+        <div style="font-size:0.76rem;color:var(--ink-2);margin-bottom:1rem">
+          Flagged clause gaps and conflicting terms requiring commercial or legal correction.
+        </div>
+        <div style="font-size:0.8rem;font-weight:700;color:var(--rose);margin-bottom:0.5rem">HIGH RISK CLAUSES (${highRisks.length} ITEMS)</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.25rem">
+          ${highRisks.map(a => `
+            <div class="entity-link-card" style="border-left:3px solid var(--rose)">
+              <div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--ink)">${a.clauseRef}</div>
+                <div style="font-size:0.7rem;color:var(--ink-2)">${a.riskSummary}</div>
+                <div style="font-size:0.68rem;color:var(--rose);font-weight:600">Exposure: $${(a.financialExposureUSD || 0).toLocaleString()}</div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${a.docId}')">
+                🔗 View in Audit Matrix
+              </button>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="font-size:0.8rem;font-weight:700;color:var(--amber);margin-bottom:0.5rem">MEDIUM RISK CLAUSES (${medRisks.length} ITEMS)</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          ${medRisks.map(a => `
+            <div class="entity-link-card" style="border-left:3px solid var(--amber)">
+              <div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--ink)">${a.clauseRef}</div>
+                <div style="font-size:0.7rem;color:var(--ink-2)">${a.riskSummary}</div>
+                <div style="font-size:0.68rem;color:var(--amber);font-weight:600">Exposure: $${(a.financialExposureUSD || 0).toLocaleString()}</div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${a.docId}')">
+                🔗 View in Audit Matrix
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'val_exposure': {
+      title = '💰 Unhedged Financial Risk Exposure Matrix';
+      const audits = filtered.auditLogs || state.data.auditLogs || [];
+      const totalExp = audits.reduce((a, b) => a + (b.financialExposureUSD || 0), 0);
+      html = `
+        <div style="background:rgba(255,92,108,0.12);border:1px solid var(--rose);padding:0.85rem;border-radius:var(--r);margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:0.7rem;color:var(--ink-3);text-transform:uppercase">Total Financial Risk Exposure</div>
+            <div class="mono" style="font-size:1.5rem;font-weight:800;color:var(--rose)">$${totalExp.toLocaleString()}</div>
+          </div>
+          <span class="st rose">UNHEDGED LIABILITY</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.65rem">
+          ${audits.map(a => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.68rem;color:var(--cyan)">${a.docRef}</span>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--ink)">${a.clauseRef}</div>
+                <div style="font-size:0.7rem;color:var(--ink-2)">${a.issueType} · ${a.category}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="mono" style="font-size:0.85rem;font-weight:700;color:var(--rose)">$${(a.financialExposureUSD || 0).toLocaleString()}</div>
+                <button class="entity-link-btn" style="margin-top:4px" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${a.docId}')">
+                  🔗 Inspect
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'orgs': {
+      title = '🏢 Tenant Organizations & Corporate Boundary Drill-Down';
+      const orgs = filtered.orgs || state.data.orgs || [];
+      html = `
+        <div style="font-size:0.76rem;color:var(--ink-2);margin-bottom:1rem">Showing all ${orgs.length} registered tenant entities with seat capacities and jurisdictions.</div>
+        <div style="display:flex;flex-direction:column;gap:0.65rem">
+          ${orgs.map(o => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.7rem;color:var(--signal)">${o.code} · ${o.type}</span>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${o.name}</div>
+                <div style="font-size:0.7rem;color:var(--ink-3)">Jurisdiction: <b>${o.country}</b> · Tax ID: <b>${o.taxId}</b> · Max Users: <b>${o.maxUsers} Seats</b></div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('orgs', '${o.id}')">
+                🔗 Select Org
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'ships': {
+      title = '⚓ Fleets & Vessel IMO Technical Specs Drill-Down';
+      const vessels = filtered.vessels || state.data.vessels || [];
+      html = `
+        <div style="font-size:0.76rem;color:var(--ink-2);margin-bottom:1rem">Showing all ${vessels.length} vessel profiles with deadweight tonnage and flags.</div>
+        <div style="display:flex;flex-direction:column;gap:0.65rem">
+          ${vessels.map(v => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.7rem;color:var(--cyan)">IMO: ${v.imo} · ${v.type}</span>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${v.name}</div>
+                <div style="font-size:0.7rem;color:var(--ink-3)">Flag: <b>${v.flag}</b> · Summer DWT: <b>${(v.dwt || 0).toLocaleString()} MT</b> · Built: <b>${v.builtYear}</b></div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('ships', '${v.imo}')">
+                🔗 Select Ship
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    case 'fixtures': {
+      title = '📜 Contract Fixtures (Time & Voyage Charters) Drill-Down';
+      const tcs = filtered.tcs || state.data.tcs || [];
+      const vcs = filtered.vcs || state.data.vcs || [];
+      html = `
+        <div style="font-size:0.8rem;font-weight:700;color:var(--signal);margin-bottom:0.5rem">TIME CHARTER FIXTURES (${tcs.length} CONTRACTS)</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.25rem">
+          ${tcs.map(t => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.7rem;color:var(--cyan)">${t.contractId} · ${t.vesselName}</span>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">Charterer: ${t.chartererName}</div>
+                <div style="font-size:0.7rem;color:var(--ink-3)">Rate: <b class="mono" style="color:var(--signal)">$${(t.hireRatePerDay || 0).toLocaleString()}/day</b> · Delivery: ${t.deliveryPort}</div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('timecontracts', '${t.contractId}')">
+                🔗 Inspect Fixture
+              </button>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="font-size:0.8rem;font-weight:700;color:var(--cyan);margin-bottom:0.5rem">VOYAGE CHARTER FIXTURES (${vcs.length} CONTRACTS)</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          ${vcs.map(v => `
+            <div class="entity-link-card">
+              <div>
+                <span class="mono" style="font-size:0.7rem;color:var(--signal)">${v.contractId} · Voyage ${v.voyageNumber}</span>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${v.vesselName} (${v.cargoType})</div>
+                <div style="font-size:0.7rem;color:var(--ink-3)">Route: ${v.loadPort} → ${v.dischargePort} · Freight: <b>$${v.freightRateUSD}/MT</b></div>
+              </div>
+              <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('voyagecontracts', '${v.contractId}')">
+                🔗 Inspect Fixture
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+    }
+
+    default: {
+      title = '🔍 Analytical Submodule Drill-Down';
+      html = `<div style="padding:1rem;color:var(--ink-2)">Drill-down data scoped for active selection.</div>`;
+    }
+  }
+
+  createLargeModalContainer(title, html);
+};
+
+window.openEntity360DrillDown = function(category, id) {
+  const cat = category === 'ships' ? 'vessels' : category === 'charterparties' ? 'cps' : category === 'timecontracts' ? 'tcs' : category === 'voyagecontracts' ? 'vcs' : category === 'riderclauses' ? 'riders' : category === 'masterinstructions' ? 'masters' : category === 'contractvalidation' ? 'validations' : category;
+
+  const items = state.data[cat] || [];
+  const pk = getPkKey(cat);
+  const item = items.find(x => x[pk] === id) || items[0];
+
+  if (!item) {
+    window.showToast('No record found for 360° drill down.');
+    return;
+  }
+
+  const itemId = item[pk];
+  const title = `🔍 360° Entity Relationship & Cross-Module Drill-Down : ${itemId}`;
+
+  const linkedVessel = state.data.vessels.find(v => v.imo === item.vesselImo || v.name === item.vesselName);
+  const linkedOrg = state.data.orgs.find(o => o.id === item.organizationId || o.name === item.owner || o.name === item.counterparty);
+  const linkedTCs = state.data.tcs.filter(t => t.vesselImo === item.vesselImo || t.contractId === item.contractId || t.contractId === item.associatedContractId);
+  const linkedVCs = state.data.vcs.filter(v => v.vesselImo === item.vesselImo || v.contractId === item.contractId || v.contractId === item.associatedContractId);
+  const linkedRiders = state.data.riders.filter(r => r.associatedContractId === item.contractId || r.associatedContractId === item.associatedContractId);
+  const linkedMasters = state.data.masters.filter(m => m.vesselImo === item.vesselImo || m.contractId === item.contractId);
+  const linkedInsurance = state.data.insurance.filter(p => p.vesselImo === item.vesselImo);
+  const linkedValidations = state.data.validations.filter(val => val.associatedContractId === item.contractId || val.id === item.docId || val.id === id);
+
+  const html = `
+    <!-- HEADER SUMMARY CARD -->
+    <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+        <div>
+          <span class="mono" style="font-size:0.72rem;color:var(--signal);font-weight:700">${cat.toUpperCase()} · ${itemId}</span>
+          <h3 style="font-size:1.1rem;color:var(--ink);margin:3px 0">${item.name || item.title || item.docRef || item.policyNo || item.instructionNo || item.cpForm || itemId}</h3>
+        </div>
+        <span class="st good" style="font-size:0.7rem">${item.status || 'Active'}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--ink-2)">
+        Entity Category: <b>${cat}</b> · Primary Owner/Org: <b>${item.owner || item.organizationId || item.counterparty || 'Tegrity Tec'}</b>
+      </div>
+    </div>
+
+    <!-- CROSS-MODULE LINKED ENTITIES MATRIX -->
+    <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;gap:6px">
+      <span>🔗</span> CROSS-MODULE LINKED ENTITIES & RELATIONSHIP MAP
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1.5rem">
+      <!-- LINKED VESSEL -->
+      ${linkedVessel ? `
+        <div class="entity-link-card" style="border-left:3px solid var(--cyan)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--cyan)">⚓ LINKED VESSEL</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${linkedVessel.name} (IMO: ${linkedVessel.imo})</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Type: ${linkedVessel.type} · Flag: ${linkedVessel.flag} · DWT: ${linkedVessel.dwt} MT</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('ships', '${linkedVessel.imo}')">
+            🔗 Jump to Ship
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- LINKED ORG -->
+      ${linkedOrg ? `
+        <div class="entity-link-card" style="border-left:3px solid var(--signal)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--signal)">🏢 LINKED TENANT ORGANIZATION</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${linkedOrg.name} (${linkedOrg.code})</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Type: ${linkedOrg.type} · Country: ${linkedOrg.country}</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('orgs', '${linkedOrg.id}')">
+            🔗 Jump to Org
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- LINKED TIME CHARTERS -->
+      ${linkedTCs.map(tc => `
+        <div class="entity-link-card" style="border-left:3px solid var(--violet)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--violet)">⏱️ LINKED TIME CHARTER</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">Contract ${tc.contractId} · ${tc.vesselName}</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Charterer: ${tc.chartererName} · Hire: $${tc.hireRatePerDay}/day</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('timecontracts', '${tc.contractId}')">
+            🔗 Jump to Fixture
+          </button>
+        </div>
+      `).join('')}
+
+      <!-- LINKED VOYAGE CHARTERS -->
+      ${linkedVCs.map(vc => `
+        <div class="entity-link-card" style="border-left:3px solid var(--amber)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--amber)">📜 LINKED VOYAGE CHARTER</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">Voyage ${vc.voyageNumber} · ${vc.cargoType}</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Route: ${vc.loadPort} → ${vc.dischargePort} · Quantity: ${vc.quantityMT} MT</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('voyagecontracts', '${vc.contractId}')">
+            🔗 Jump to Voyage
+          </button>
+        </div>
+      `).join('')}
+
+      <!-- LINKED RIDER CLAUSES -->
+      ${linkedRiders.map(rc => `
+        <div class="entity-link-card" style="border-left:3px solid var(--good)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--good)">✒️ LINKED RIDER CLAUSE</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${rc.clauseId} · ${rc.title}</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Category: ${rc.category} · Text: "${rc.riderText.slice(0, 60)}..."</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('riderclauses', '${rc.clauseId}')">
+            🔗 Jump to Rider
+          </button>
+        </div>
+      `).join('')}
+
+      <!-- LINKED MASTER INSTRUCTIONS -->
+      ${linkedMasters.map(m => `
+        <div class="entity-link-card" style="border-left:3px solid var(--cyan)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--cyan)">📋 LINKED MASTER INSTRUCTION</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${m.instructionNo} · ${m.issuedTo}</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Priority: ${m.priority} · Loading Orders: "${m.loadingInstructions.slice(0, 60)}..."</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('masterinstructions', '${m.instructionId}')">
+            🔗 Jump to Master Ops
+          </button>
+        </div>
+      `).join('')}
+
+      <!-- LINKED INSURANCE POLICIES -->
+      ${linkedInsurance.map(p => `
+        <div class="entity-link-card" style="border-left:3px solid var(--violet)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--violet)">🛡️ LINKED MARINE INSURANCE</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${p.policyNo} (${p.policyType})</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">Insurer: ${p.insurer} · Limit: ${p.insuredLimit} · Expiry: ${p.expiryDate}</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('insurance', '${p.policyId}')">
+            🔗 Jump to Insurance
+          </button>
+        </div>
+      `).join('')}
+
+      <!-- LINKED VALIDATION AUDITS -->
+      ${linkedValidations.map(val => `
+        <div class="entity-link-card" style="border-left:3px solid var(--rose)">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--rose)">🔍 LINKED VALIDATION AUDIT</span>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--ink)">${val.docRef} · Completeness Index: ${val.completenessScore}%</div>
+            <div style="font-size:0.7rem;color:var(--ink-3)">High Risks: ${val.highRiskCount} · Financial Exposure: $${(val.financialExposureUSD || 0).toLocaleString()}</div>
+          </div>
+          <button class="entity-link-btn" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('contractvalidation', '${val.id}')">
+            🔗 Jump to Audit Matrix
+          </button>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- ACTION BUTTON BAR -->
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;border-top:1px solid var(--edge);padding-top:0.75rem">
+      <button class="btn-c btn-c-primary btn-sm" onclick="document.getElementById('blade-overlay').remove(); window.jumpToEntity('${cat}', '${itemId}')">
+        🚀 SELECT & INSPECT THIS ENTITY IN CONSOLE
+      </button>
+    </div>
+  `;
+
+  createLargeModalContainer(title, html);
+};
+
+window.jumpToEntity = function(tabName, entityId) {
+  const tabMap = {
+    orgs: 'orgs',
+    fleets: 'fleets',
+    vessels: 'ships',
+    ships: 'ships',
+    cps: 'charterparties',
+    charterparties: 'charterparties',
+    tcs: 'timecontracts',
+    timecontracts: 'timecontracts',
+    vcs: 'voyagecontracts',
+    voyagecontracts: 'voyagecontracts',
+    riders: 'riderclauses',
+    riderclauses: 'riderclauses',
+    masters: 'masterinstructions',
+    masterinstructions: 'masterinstructions',
+    insurance: 'insurance',
+    validations: 'contractvalidation',
+    contractvalidation: 'contractvalidation'
+  };
+
+  const targetTab = tabMap[tabName] || 'ships';
+  
+  state.activeTab = targetTab;
+  document.querySelectorAll('.c-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === targetTab);
+  });
+
+  const catMap = {
+    orgs: 'orgs',
+    fleets: 'fleets',
+    ships: 'vessels',
+    charterparties: 'cps',
+    timecontracts: 'tcs',
+    voyagecontracts: 'vcs',
+    riderclauses: 'riders',
+    masterinstructions: 'masters',
+    insurance: 'insurance',
+    contractvalidation: 'validations'
+  };
+
+  const category = catMap[targetTab] || 'vessels';
+  state.selectedEntity = { category, id: entityId };
+
+  window.showToast(`🔍 Jumped to ${targetTab.toUpperCase()} entity (${entityId})`);
   renderApp();
 };
 

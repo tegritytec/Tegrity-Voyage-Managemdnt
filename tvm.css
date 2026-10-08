@@ -1225,6 +1225,94 @@ table.dtable tbody tr.row-selected td {
   margin-top: 0.85rem;
 }
 
+/* ── DRILL-DOWN ANALYTICAL MODAL STYLES ─────────────────────────── */
+.tile { cursor: pointer; position: relative; }
+.tile:hover { border-color: var(--signal) !important; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 15px var(--signal-glow); }
+.tile-drill-hint { position: absolute; right: 8px; bottom: 6px; font-size: 0.62rem; color: var(--signal); opacity: 0; transition: opacity 0.2s; font-family: 'IBM Plex Mono', monospace; }
+.tile:hover .tile-drill-hint { opacity: 1; }
+
+.blade-card-lg {
+  background: linear-gradient(175deg, rgba(12, 36, 54, 0.98), rgba(6, 25, 42, 0.98));
+  border: 1px solid var(--edge-hi);
+  border-radius: var(--r);
+  width: 95%;
+  max-width: 920px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px var(--signal-glow);
+  padding: 1.25rem;
+}
+
+.drill-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--edge);
+  padding-bottom: 0.5rem;
+}
+
+.drill-tab-btn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drill-tab-btn:hover {
+  border-color: var(--edge-hi);
+  color: var(--ink);
+}
+
+.drill-tab-btn.active {
+  background: rgba(155, 229, 100, 0.15);
+  color: var(--signal);
+  border-color: var(--signal);
+  box-shadow: 0 0 8px rgba(155, 229, 100, 0.3);
+}
+
+.entity-link-card {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.entity-link-card:hover {
+  border-color: var(--signal);
+  background: var(--surface-2);
+  transform: translateX(2px);
+}
+
+.entity-link-btn {
+  background: rgba(155, 229, 100, 0.12);
+  color: var(--signal);
+  border: 1px solid rgba(155, 229, 100, 0.35);
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.entity-link-btn:hover {
+  background: var(--signal);
+  color: var(--abyss);
+  box-shadow: 0 0 8px var(--signal-glow);
+}
+
+
 
 
 
