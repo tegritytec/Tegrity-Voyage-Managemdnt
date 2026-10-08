@@ -33,10 +33,21 @@ const STORAGE_KEYS = {
   validations: 'tvm_contract_validations',
   auditLogs: 'tvm_validation_audit_logs',
   researchDb: 'tvm_clause_research_db',
-  stagedDocs: 'tvm_staged_documents_v1'
+  stagedDocs: 'tvm_staged_documents_v2'
 };
 
 const DEFAULT_STAGED_DOCUMENTS = [
+  {
+    id: 'STG-1000-VISBY',
+    name: 'VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx',
+    size: '2.8 MB',
+    type: 'xlsx',
+    loadedAt: '2026-10-08 22:30',
+    selected: true,
+    status: 'Staged',
+    analysisResultDocId: null,
+    isBenchmark: true
+  },
   {
     id: 'STG-1001',
     name: 'BIMCO_2026_Tanker_Charter_Addendum_V3.pdf',
@@ -63,7 +74,7 @@ const DEFAULT_STAGED_DOCUMENTS = [
     size: '185 KB',
     type: 'txt',
     loadedAt: '2026-10-08 20:05',
-    selected: true,
+    selected: false,
     status: 'Staged',
     analysisResultDocId: null
   },
@@ -3577,55 +3588,118 @@ window.triggerBatchAnalysis = function() {
       if (statusText) statusText.textContent = `Batch Contract Analysis Complete! ${selectedDocs.length} document(s) verified.`;
 
       selectedDocs.forEach((doc, idx) => {
-        const newDocId = `VAL-${Date.now().toString().slice(-4)}-${idx + 1}`;
-        const docRef = `INGEST-${Date.now().toString().slice(-4)}-0${idx + 1} / ${doc.name.slice(0, 14).toUpperCase()}`;
-        
-        const isPdf = doc.type === 'pdf';
-        const isWarRisk = doc.name.toLowerCase().includes('war') || doc.name.toLowerCase().includes('redsea');
-        const isEts = doc.name.toLowerCase().includes('ets') || doc.name.toLowerCase().includes('carbon');
+        const isVisby = doc.name.toLowerCase().includes('visby') || doc.name.toLowerCase().includes('tanjung') || doc.isBenchmark;
+        const newDocId = isVisby ? 'VAL-2026-VISBY' : `VAL-${Date.now().toString().slice(-4)}-${idx + 1}`;
+        const docRef = isVisby ? 'BENCHMARK-VISBY-01 / TANJUNG-SELOR' : `INGEST-${Date.now().toString().slice(-4)}-0${idx + 1} / ${doc.name.slice(0, 14).toUpperCase()}`;
 
-        const newValidation = {
-          id: newDocId,
-          docRef: docRef,
-          docType: isPdf ? 'Voyage Charter Addendum' : 'Time Charter Rider',
-          associatedContractId: isEts ? 'CP-2026-001' : 'VC-2026-001',
-          title: `Audited: ${doc.name}`,
-          counterparty: 'Global Maritime Charterers Ltd',
-          governingLaw: 'English Law / LMAA Arbitration',
-          completenessScore: isWarRisk ? 85 : isEts ? 90 : 88,
-          totalClauses: 22,
-          passedClauses: isWarRisk ? 18 : 20,
-          missingClausesCount: isWarRisk ? 2 : 1,
-          conflictingClausesCount: 1,
-          highRiskCount: isWarRisk ? 2 : 1,
-          mediumRiskCount: 1,
-          lowRiskCount: 1,
-          financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
-          auditDate: new Date().toISOString().split('T')[0],
-          status: 'Action Required'
-        };
+        if (isVisby) {
+          state.data.validations = (state.data.validations || []).filter(v => v.id !== 'VAL-2026-VISBY');
+          state.data.auditLogs = (state.data.auditLogs || []).filter(a => a.docId !== 'VAL-2026-VISBY');
 
-        const newAuditLog = {
-          auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}`,
-          docId: newDocId,
-          docRef: docRef,
-          clauseRef: isWarRisk ? 'Clause 24 - Red Sea Transit & War Risk Premium' : isEts ? 'Clause 42 - EU ETS Allowance Sharing & Compliance' : 'Clause 38 - Fuel Warranty & MARPOL Sampling',
-          category: isWarRisk ? 'War & Geo-Political Risk' : isEts ? 'Environmental Compliance' : 'Bunker Quality & MARPOL',
-          issueType: isWarRisk ? 'Conflicting Risk Terms' : 'Missing Standard Wording',
-          proposedText: `[Extracted from ${doc.name}] Owners and Charterers share operational costs as mutually agreed.`,
-          tegrityRecommendation: isWarRisk 
-            ? 'Incorporate CONWARTIME 2013 / BIMCO War Risks Clause for Time Charters: Charterers pay all additional war risk premiums and crew bonus.'
-            : 'Incorporate BIMCO 2023 Emission Trading Scheme (ETS) Allowances Clause for Time Charters: Charterers provide EU Allowances (EUA) monthly.',
-          riskLevel: 'High',
-          riskSummary: isWarRisk ? 'Ambiguous cost sharing wording exposes Owners to $125,000 unbudgeted war risk insurance premiums.' : 'Lack of monthly allowance transfer schedule creates $60,000 EUA shortfall risk.',
-          financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
-          actionTaken: 'DEFERRED',
-          actionNotes: `Analyzed from batch ingestion of "${doc.name}" on ${new Date().toISOString().split('T')[0]}.`,
-          referencePrecedent: isWarRisk ? 'CONWARTIME 2013 / LMAA Award 2024/02' : 'BIMCO ETS Clause 2023 / EU Directive 2023/959'
-        };
+          state.data.validations.unshift({
+            id: 'VAL-2026-VISBY',
+            docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR',
+            docType: 'Laytime & Despatch Benchmark Assessment (.xlsx)',
+            associatedContractId: 'VC-2026-VISBY',
+            title: `Audited: ${doc.name}`,
+            counterparty: 'Tanjung Selor Energy & Chartering Ltd / MV VISBY Charterers',
+            governingLaw: 'English Law / LMAA Arbitration Benchmark',
+            completenessScore: 94,
+            totalClauses: 32,
+            passedClauses: 30,
+            missingClausesCount: 1,
+            conflictingClausesCount: 1,
+            highRiskCount: 1,
+            mediumRiskCount: 1,
+            lowRiskCount: 0,
+            financialExposureUSD: 34250,
+            auditDate: new Date().toISOString().split('T')[0],
+            status: 'Audit Complete',
+            isBenchmark: true
+          });
 
-        state.data.validations.unshift(newValidation);
-        state.data.auditLogs.unshift(newAuditLog);
+          state.data.auditLogs.unshift(
+            {
+              auditId: `VAL-AUD-VISBY-001-${idx}`,
+              docId: 'VAL-2026-VISBY',
+              docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR',
+              clauseRef: 'Clause 14 - Notice of Readiness (NOR) & Tanjung Selor Laytime Turn Time',
+              category: 'Laytime & Demurrage Benchmark',
+              issueType: 'NOR Tender & WWD Deduction Benchmark',
+              proposedText: `[Extracted from ${doc.name}] NOR tendered at Tanjung Selor anchorage at 14:00 hrs 12-Apr; laytime commenced immediately upon NOR receipt.`,
+              tegrityRecommendation: 'Apply 6-hour turn time per Charterparty Clause 14 (laytime commences 20:00 hrs) and deduct 18.5 hrs tropical rain holds recorded in Tanjung Selor SOF. Yields $34,250 net despatch credit.',
+              riskLevel: 'High',
+              riskSummary: 'Unadjusted NOR counting creates $18,500 unbudgeted demurrage penalty. WWD 6-hr turn time benchmark audit recovers $34,250 despatch credit.',
+              financialExposureUSD: 34250,
+              actionTaken: 'ACCEPTED',
+              actionNotes: `Audited per ${doc.name} Benchmark Model on ${new Date().toISOString().split('T')[0]}.`,
+              referencePrecedent: 'VISBY Tanjung Selor Laytime Benchmark / BIMCO Laytime Definitions 2013'
+            },
+            {
+              auditId: `VAL-AUD-VISBY-002-${idx}`,
+              docId: 'VAL-2026-VISBY',
+              docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR',
+              clauseRef: 'Clause 21 - Reversible Laytime & Despatch Rate Benchmark ($12,500/day)',
+              category: 'Despatch Settlement & Pumping Warranty',
+              issueType: 'Despatch Rate Calculation Benchmark',
+              proposedText: `[Extracted from ${doc.name}] Despatch calculated at 100% of demurrage rate ($25,000/day) for all time saved.`,
+              tegrityRecommendation: 'Enforce standard Reversible Laytime Clause 21: Despatch calculated at 50% demurrage rate ($12,500/day on working time saved). Tanjung Selor jetty discharge rate verified at 2,250 MT/hr.',
+              riskLevel: 'Medium',
+              riskSummary: 'Full demurrage rate despatch overpays charterer by $15,750. 50% half-rate enforcement benchmark protects owner net margin.',
+              financialExposureUSD: 15750,
+              actionTaken: 'ACCEPTED',
+              actionNotes: `Audited per ${doc.name} Benchmark Model on ${new Date().toISOString().split('T')[0]}.`,
+              referencePrecedent: 'VISBY Tanjung Selor Assessment Model / GENCON 1994 Clause 7'
+            }
+          );
+        } else {
+          const isPdf = doc.type === 'pdf';
+          const isWarRisk = doc.name.toLowerCase().includes('war') || doc.name.toLowerCase().includes('redsea');
+          const isEts = doc.name.toLowerCase().includes('ets') || doc.name.toLowerCase().includes('carbon');
+
+          const newValidation = {
+            id: newDocId,
+            docRef: docRef,
+            docType: isPdf ? 'Voyage Charter Addendum' : 'Time Charter Rider',
+            associatedContractId: isEts ? 'CP-2026-001' : 'VC-2026-001',
+            title: `Audited: ${doc.name}`,
+            counterparty: 'Global Maritime Charterers Ltd',
+            governingLaw: 'English Law / LMAA Arbitration',
+            completenessScore: isWarRisk ? 85 : isEts ? 90 : 88,
+            totalClauses: 22,
+            passedClauses: isWarRisk ? 18 : 20,
+            missingClausesCount: isWarRisk ? 2 : 1,
+            conflictingClausesCount: 1,
+            highRiskCount: isWarRisk ? 2 : 1,
+            mediumRiskCount: 1,
+            lowRiskCount: 1,
+            financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
+            auditDate: new Date().toISOString().split('T')[0],
+            status: 'Action Required'
+          };
+
+          const newAuditLog = {
+            auditId: `VAL-AUD-${Date.now().toString().slice(-4)}-${idx + 1}`,
+            docId: newDocId,
+            docRef: docRef,
+            clauseRef: isWarRisk ? 'Clause 24 - Red Sea Transit & War Risk Premium' : isEts ? 'Clause 42 - EU ETS Allowance Sharing & Compliance' : 'Clause 38 - Fuel Warranty & MARPOL Sampling',
+            category: isWarRisk ? 'War & Geo-Political Risk' : isEts ? 'Environmental Compliance' : 'Bunker Quality & MARPOL',
+            issueType: isWarRisk ? 'Conflicting Risk Terms' : 'Missing Standard Wording',
+            proposedText: `[Extracted from ${doc.name}] Owners and Charterers share operational costs as mutually agreed.`,
+            tegrityRecommendation: isWarRisk 
+              ? 'Incorporate CONWARTIME 2013 / BIMCO War Risks Clause for Time Charters: Charterers pay all additional war risk premiums and crew bonus.'
+              : 'Incorporate BIMCO 2023 Emission Trading Scheme (ETS) Allowances Clause for Time Charters: Charterers provide EU Allowances (EUA) monthly.',
+            riskLevel: 'High',
+            riskSummary: isWarRisk ? 'Ambiguous cost sharing wording exposes Owners to $125,000 unbudgeted war risk insurance premiums.' : 'Lack of monthly allowance transfer schedule creates $60,000 EUA shortfall risk.',
+            financialExposureUSD: isWarRisk ? 125000 : isEts ? 60000 : 75000,
+            actionTaken: 'DEFERRED',
+            actionNotes: `Analyzed from batch ingestion of "${doc.name}" on ${new Date().toISOString().split('T')[0]}.`,
+            referencePrecedent: isWarRisk ? 'CONWARTIME 2013 / LMAA Award 2024/02' : 'BIMCO ETS Clause 2023 / EU Directive 2023/959'
+          };
+
+          state.data.validations.unshift(newValidation);
+          state.data.auditLogs.unshift(newAuditLog);
+        }
 
         doc.status = 'Analyzed';
         doc.analysisResultDocId = newDocId;
@@ -4247,6 +4321,13 @@ Overall Completeness Index: ${avgCompleteness}%
 Total Financial Risk Exposure: $${totalExposure.toLocaleString()} USD
 Risk Distribution: ${highRiskCount} High Risk | ${medRiskCount} Medium Risk | ${lowRiskCount} Low Risk
 
+BENCHMARK AUDIT REFERENCE:
+------------------------------------------------------------
+Benchmark Model: VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx
+Vessel & Port: MV VISBY · Tanjung Selor Anchorage & Discharge Jetty
+Laytime Terms: SHINC / WWD 6-Hour Turn Time NOR Benchmark
+Despatch Settlement: $34,250 USD Net Despatch Credit ($12,500/day Half-Demurrage Rate)
+
 TOP GOVERNANCE DISCREPANCIES & RECOMMENDATIONS:
 ${targetLogs.slice(0, 5).map((log, i) => `
 ${i + 1}. [${log.riskLevel} RISK] ${log.docRef} · ${log.clauseRef}
@@ -4258,15 +4339,35 @@ ${i + 1}. [${log.riskLevel} RISK] ${log.docRef} · ${log.clauseRef}
 `).join('')}
 
 EXECUTIVE RECOMMENDED ACTION STEPS:
-1. Immediately issue Rider Addendums incorporating BIMCO 2023 EU ETS and MARPOL Annex VI sampling clauses.
-2. Require counterparty agreement on CONWARTIME 2013 Red Sea war risk premium allocation prior to vessel fixture execution.
-3. Align demurrage claim notification windows to BPVOY4 standard 90-day time-bars to avoid loss of legitimate recovery.
+1. Enforce VISBY Tanjung Selor Laytime Benchmark rules: apply 6-hr turn time after NOR and deduct tropical rain holds per SOF.
+2. Require counterparty agreement on 50% half-rate despatch calculations ($12,500/day) for working time saved.
+3. Immediately issue Rider Addendums incorporating BIMCO 2023 EU ETS and CONWARTIME Red Sea war risk clauses.
 
 Report Link: https://tegrity-tvm-web-uoklz4qdla-uc.a.run.app/?scope=${Array.from(targetDocIds).join(',')}
   `.trim();
 
   const html = `
     <div>
+      <!-- BENCHMARK REFERENCE CARD -->
+      <div style="background:rgba(79,224,232,0.06);border:1px solid rgba(79,224,232,0.3);padding:0.75rem 0.9rem;border-radius:4px;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem">
+          <div style="font-weight:700;font-size:0.84rem;color:var(--cyan);display:flex;align-items:center;gap:6px">
+            <span>📐</span> BENCHMARK AUDIT MODEL: VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx
+          </div>
+          <span class="st good" style="font-size:0.65rem">VERIFIED BENCHMARK</span>
+        </div>
+        <div style="font-size:0.72rem;color:var(--ink-2);line-height:1.45">
+          Executive Summary findings and risk assessments for selected documents are benchmarked against the <b>VISBY Tanjung Selor Laytime & Despatch Assessment Model</b>. 
+          Laytime turn times (6-hr NOR window), Weather Working Day (WWD) rain exclusions, and 50% half-demurrage despatch rate calculations ($12,500/day) have been enforced.
+        </div>
+        <div style="display:flex;gap:1.5rem;margin-top:0.5rem;font-size:0.7rem;color:var(--ink);flex-wrap:wrap">
+          <span>🚢 Vessel: <b>MV VISBY</b></span>
+          <span>⚓ Port: <b>Tanjung Selor Anchorage & Jetty</b></span>
+          <span>💵 Net Despatch Credit: <b style="color:var(--signal)">$34,250 USD</b></span>
+          <span>⚡ Demurrage Rate: <b>$25,000 / Day</b></span>
+        </div>
+      </div>
+
       <!-- EXECUTIVE METRIC TILES -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:0.75rem;margin-bottom:1rem">
         <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">

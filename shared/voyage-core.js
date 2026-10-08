@@ -72,6 +72,7 @@ export const INSURANCE_POLICIES = [
 ];
 
 export const CONTRACT_VALIDATIONS = [
+  { id: 'VAL-2026-VISBY', docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR', docType: 'Laytime & Despatch Benchmark Assessment (.xlsx)', associatedContractId: 'VC-2026-VISBY', title: 'Audited: VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx', counterparty: 'Tanjung Selor Energy & Chartering Ltd / MV VISBY Charterers', governingLaw: 'English Law / LMAA Arbitration Benchmark', completenessScore: 94, totalClauses: 32, passedClauses: 30, missingClausesCount: 1, conflictingClausesCount: 1, highRiskCount: 1, mediumRiskCount: 1, lowRiskCount: 0, financialExposureUSD: 34250, auditDate: '2026-10-08', status: 'Audit Complete', isBenchmark: true },
   { id: 'VAL-2026-001', docRef: 'CP-BPVOY4-01 / ADDENDUM-01', docType: 'Voyage Charter Addendum', associatedContractId: 'VC-2026-001', title: 'BPVOY4 Voyage Charter Audit & Rider Addendum', counterparty: 'Shell International Trading', governingLaw: 'English Law', completenessScore: 82, totalClauses: 28, passedClauses: 23, missingClausesCount: 3, conflictingClausesCount: 2, highRiskCount: 2, mediumRiskCount: 2, lowRiskCount: 1, financialExposureUSD: 145000, auditDate: '2026-03-26', status: 'Action Required' },
   { id: 'VAL-2026-002', docRef: 'TC-2026-001 / TIME-AGMT-02', docType: 'Time Charter Party', associatedContractId: 'TC-2026-001', title: 'Time Charter Agreement MT Tegrity Apex', counterparty: 'Ocean Neptune Chartering Ltd.', governingLaw: 'English Law', completenessScore: 91, totalClauses: 34, passedClauses: 31, missingClausesCount: 1, conflictingClausesCount: 2, highRiskCount: 1, mediumRiskCount: 1, lowRiskCount: 1, financialExposureUSD: 68000, auditDate: '2026-03-24', status: 'Audit Complete' },
   { id: 'VAL-2026-003', docRef: 'CP-SHELLVOY6-01 / VC-2026-002', docType: 'Voyage Charter Party', associatedContractId: 'VC-2026-002', title: 'SHELLVOY6 Voyage Charter Agreement MV Tegrity Crest', counterparty: 'BP Oil International', governingLaw: 'English Law', completenessScore: 76, totalClauses: 25, passedClauses: 19, missingClausesCount: 4, conflictingClausesCount: 2, highRiskCount: 3, mediumRiskCount: 2, lowRiskCount: 1, financialExposureUSD: 210000, auditDate: '2026-03-21', status: 'Action Required' },
@@ -79,6 +80,38 @@ export const CONTRACT_VALIDATIONS = [
 ];
 
 export const VALIDATION_AUDIT_LOGS = [
+  {
+    auditId: 'VAL-AUD-VISBY-001',
+    docId: 'VAL-2026-VISBY',
+    docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR',
+    clauseRef: 'Clause 14 - Notice of Readiness (NOR) & Tanjung Selor Laytime Turn Time',
+    category: 'Laytime & Demurrage Benchmark',
+    issueType: 'NOR Tender & WWD Deduction Benchmark',
+    proposedText: '[Extracted from VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx] NOR tendered at Tanjung Selor anchorage at 14:00 hrs 12-Apr; laytime commenced immediately upon NOR receipt.',
+    tegrityRecommendation: 'Apply 6-hour turn time per Charterparty Clause 14 (laytime commences 20:00 hrs) and deduct 18.5 hrs tropical rain holds recorded in Tanjung Selor SOF. Yields $34,250 net despatch credit.',
+    riskLevel: 'High',
+    riskSummary: 'Unadjusted NOR counting creates $18,500 unbudgeted demurrage penalty. WWD 6-hr turn time benchmark audit recovers $34,250 despatch credit.',
+    financialExposureUSD: 34250,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Audited per VISBY Tanjung Selor Laytime & Despatch Benchmark Assessment Model.',
+    referencePrecedent: 'VISBY Tanjung Selor Laytime Benchmark / BIMCO Laytime Definitions 2013'
+  },
+  {
+    auditId: 'VAL-AUD-VISBY-002',
+    docId: 'VAL-2026-VISBY',
+    docRef: 'BENCHMARK-VISBY-01 / TANJUNG-SELOR',
+    clauseRef: 'Clause 21 - Reversible Laytime & Despatch Rate Benchmark ($12,500/day)',
+    category: 'Despatch Settlement & Pumping Warranty',
+    issueType: 'Despatch Rate Calculation Benchmark',
+    proposedText: '[Extracted from VISBY_Tanjung_Selor_Laytime_Despatch_Assessment.xlsx] Despatch calculated at 100% of demurrage rate ($25,000/day) for all time saved.',
+    tegrityRecommendation: 'Enforce standard Reversible Laytime Clause 21: Despatch calculated at 50% demurrage rate ($12,500/day on working time saved). Tanjung Selor jetty discharge rate verified at 2,250 MT/hr.',
+    riskLevel: 'Medium',
+    riskSummary: 'Full demurrage rate despatch overpays charterer by $15,750. 50% half-rate enforcement benchmark protects owner net margin.',
+    financialExposureUSD: 15750,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Audited per VISBY Tanjung Selor Laytime & Despatch Benchmark Assessment Model.',
+    referencePrecedent: 'VISBY Tanjung Selor Assessment Model / GENCON 1994 Clause 7'
+  },
   {
     auditId: 'VAL-AUD-001',
     docId: 'VAL-2026-001',
