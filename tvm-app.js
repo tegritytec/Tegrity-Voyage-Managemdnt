@@ -554,80 +554,122 @@ export function renderApp() {
 
 // Render Tegrity Intelligence Engine Style Metric Tiles
 function renderSummaryStats(filtered) {
+  const mainRailHeader = document.getElementById('main-rail-header');
+  if (state.activeTab === 'contractvalidation') {
+    if (mainRailHeader) mainRailHeader.style.display = 'none';
+  } else {
+    if (mainRailHeader) mainRailHeader.style.display = 'flex';
+  }
+
   const statsContainer = document.getElementById('summary-stats');
   const readoutTotal = document.getElementById('readout-total-scoped');
   const railCount = document.getElementById('rail-count');
 
   if (state.activeTab === 'contractvalidation') {
-    const vals = filtered.validations || state.data.validations || [];
-    const audits = filtered.auditLogs || state.data.auditLogs || [];
+    // Collect selected files strictly from staged queue, document filter, or active console scope
+    const stagedDocs = state.stagedDocs || [];
+    const selectedStaged = stagedDocs.filter(d => d.selected);
+
+    let selectedDocIds = new Set();
+    selectedStaged.forEach(d => {
+      if (d.analysisResultDocId) selectedDocIds.add(d.analysisResultDocId);
+    });
+
+    if (state.selectedValidationDocId && state.selectedValidationDocId !== 'ALL') {
+      selectedDocIds.add(state.selectedValidationDocId);
+    }
+
+    if (state.activeDocumentScope && state.activeDocumentScope.length > 0) {
+      state.activeDocumentScope.forEach(id => selectedDocIds.add(id));
+    }
+
+    let vals = [];
+    let audits = [];
+
+    if (selectedDocIds.size > 0) {
+      vals = (state.data.validations || []).filter(v => selectedDocIds.has(v.id));
+      audits = (state.data.auditLogs || []).filter(a => selectedDocIds.has(a.docId));
+    } else if (selectedStaged.length > 0) {
+      vals = (filtered.validations || state.data.validations || []).slice(0, selectedStaged.length);
+      audits = (filtered.auditLogs || state.data.auditLogs || []).filter(a => vals.some(v => v.id === a.docId));
+    } else {
+      vals = filtered.validations || state.data.validations || [];
+      audits = filtered.auditLogs || state.data.auditLogs || [];
+    }
+
     const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
     const highRisks = audits.filter(a => a.riskLevel === 'High').length;
     const totalExp = audits.reduce((a, b) => a + (b.financialExposureUSD || 0), 0);
     const acceptedCount = audits.filter(a => a.actionTaken === 'ACCEPTED' || a.actionTaken === 'MODIFIED').length;
     const adoptPct = audits.length > 0 ? Math.round((acceptedCount / audits.length) * 100) : 0;
 
+    const fileCountLabel = selectedStaged.length > 0
+      ? `${selectedStaged.length} Selected Staged File(s)`
+      : selectedDocIds.size > 0
+      ? `${selectedDocIds.size} Selected Doc(s)`
+      : `${vals.length} Audited Doc(s)`;
+
     if (readoutTotal) readoutTotal.textContent = vals.length;
-    if (railCount) railCount.textContent = `5 VALIDATION METRIC TILES ACTIVE (CLICK TO DRILL DOWN)`;
+    if (railCount) railCount.textContent = `5 TILES ACTIVE (${fileCountLabel.toUpperCase()})`;
 
     if (statsContainer) {
       statsContainer.innerHTML = `
-        <div class="tile" onclick="window.openTileDrillDown('val_docs')" title="Click to drill down into Audited Contracts">
+        <div class="tile" onclick="window.openTileDrillDown('val_docs')" title="Click to drill down into Selected Audited Contracts">
           <div class="t-top">
             <div class="t-ico">🔍</div>
             <span class="pip ok">DOCS</span>
           </div>
           <div class="t-big">${vals.length}</div>
-          <div class="t-lab">AUDITED CONTRACTS</div>
-          <div class="t-sub">${vals.length} Addendums & Agreements</div>
+          <div class="t-lab">SELECTED FILES</div>
+          <div class="t-sub">${fileCountLabel}</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_index')" title="Click to drill down into Completeness Index">
+        <div class="tile" onclick="window.openTileDrillDown('val_index')" title="Click to drill down into Completeness Index for Selected Files">
           <div class="t-top">
             <div class="t-ico">📊</div>
             <span class="pip live">INDEX</span>
           </div>
           <div class="t-big">${avgScore}%</div>
           <div class="t-lab">COMPLETENESS INDEX</div>
-          <div class="t-sub">Average Audit Compliance</div>
+          <div class="t-sub">Avg for Selected Files</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_gaps')" title="Click to drill down into High & Medium Risk Gaps">
+        <div class="tile" onclick="window.openTileDrillDown('val_gaps')" title="Click to drill down into High Risk Gaps in Selected Files">
           <div class="t-top">
             <div class="t-ico">⚠️</div>
             <span class="pip warn">GAPS</span>
           </div>
           <div class="t-big">${highRisks}</div>
           <div class="t-lab">HIGH RISK GAPS</div>
-          <div class="t-sub">${audits.length} Total Line Item Audits</div>
+          <div class="t-sub">${audits.length} Audits in Selected Files</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Financial Risk Exposure">
+        <div class="tile" onclick="window.openTileDrillDown('val_exposure')" title="Click to drill down into Financial Risk Exposure for Selected Files">
           <div class="t-top">
             <div class="t-ico">💰</div>
             <span class="pip warn">EXPOSURE</span>
           </div>
           <div class="t-big">$${(totalExp / 1000).toFixed(0)}k</div>
           <div class="t-lab">FINANCIAL RISK</div>
-          <div class="t-sub">Unhedged Liability Risk</div>
+          <div class="t-sub">Liability in Selected Files</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
 
-        <div class="tile" onclick="window.openTileDrillDown('val_recs')" title="Click to drill down into AI Recommendation Adoption Rate">
+        <div class="tile" onclick="window.openTileDrillDown('val_recs')" title="Click to drill down into AI Recommendation Adoption Rate for Selected Files">
           <div class="t-top">
             <div class="t-ico">⚡</div>
             <span class="pip ok">AI RECS</span>
           </div>
           <div class="t-big">${adoptPct}%</div>
           <div class="t-lab">RECS ADOPTED</div>
-          <div class="t-sub">${acceptedCount} of ${audits.length} Accepted/Modified</div>
+          <div class="t-sub">${acceptedCount} of ${audits.length} Items Adopted</div>
           <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
           <span class="tile-drill-hint">🔍 Drill Down</span>
         </div>
@@ -1312,11 +1354,11 @@ function renderContractValidationView(filtered) {
       </div>
 
       ${valMode === 'new' ? `
-        <!-- MODE 1: NEW DOCUMENT ANALYSIS & LIVE INGESTION PIPELINE -->
+        <!-- MODE 1: CONTRACT DOCUMENT INGESTION & LIVE PIPELINE -->
         <div class="ingest-box-container">
           <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px">
-              <span>📥</span> NEW CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
+              <span>📥</span> CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
             </div>
             <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
               TEGRITY AI ENGINE READY
@@ -1430,6 +1472,16 @@ function renderContractValidationView(filtered) {
           </div>
         </div>
       `}
+
+      <!-- OPERATIONAL METRIC TILES (POSITIONED JUST ABOVE CONTRACT COMPLETENESS & RISK AUDIT MATRIX) -->
+      <div style="margin-bottom:1.5rem">
+        <div class="rail-h" style="margin-bottom:0.5rem">
+          <h2 id="rail-title">OPERATIONAL METRIC TILES</h2>
+          <span class="n" id="rail-count">5 TILES ACTIVE (SELECTED FILES ONLY)</span>
+          <div class="line"></div>
+        </div>
+        <div id="summary-stats" class="tile-grid"></div>
+      </div>
 
       <!-- SECTION 1: CONTRACT COMPLETENESS & VERIFICATION MATRIX -->
       <div style="margin-bottom:1.5rem">
