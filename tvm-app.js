@@ -95,6 +95,8 @@ export const state = {
   selectedEntity: null, // { category: 'vessels' | 'masters' | ..., id: '...' }
   selectedValidationDocId: 'ALL',
   ingestTab: 'upload',
+  validationMode: 'new', // 'new' | 'historical'
+  activeDocumentScope: null, // null (all) or ['VAL-1001', ...]
   stagedDocs: loadState(STORAGE_KEYS.stagedDocs, DEFAULT_STAGED_DOCUMENTS),
   filters: {
     org: 'ALL',
@@ -185,6 +187,7 @@ function getPkKey(cat) {
 export function getFilteredData() {
   const f = state.filters;
   const role = state.activeRole;
+  const activeScope = state.activeDocumentScope;
 
   const isDateInRange = (dateStr) => {
     if (!dateStr) return true;
@@ -193,8 +196,63 @@ export function getFilteredData() {
     return true;
   };
 
+  // 10. Filter Contract Validations
+  const filteredValidations = (state.data.validations || []).filter(v => {
+    if (activeScope && activeScope.length > 0 && !activeScope.includes(v.id)) return false;
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
+      if (v.associatedContractId !== f.contract) return false;
+    }
+    return true;
+  });
+
+  const validDocIds = new Set(filteredValidations.map(v => v.id));
+  const scopedContractIds = new Set(filteredValidations.map(v => v.associatedContractId).filter(Boolean));
+
+  // 11. Filter Audit Logs
+  const filteredAuditLogs = (state.data.auditLogs || []).filter(a => {
+    if (activeScope && activeScope.length > 0 && !validDocIds.has(a.docId)) return false;
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
+      if (!validDocIds.has(a.docId)) return false;
+    }
+    return true;
+  });
+
+  // 4. Filter Time Contracts
+  const filteredTCs = state.data.tcs.filter(tc => {
+    if (activeScope && activeScope.length > 0 && !scopedContractIds.has(tc.contractId)) return false;
+    if (f.org !== 'ALL' && tc.organizationId !== f.org) return false;
+    if (f.ship !== 'ALL' && tc.vesselImo !== f.ship) return false;
+    if (f.contract === 'VC_ONLY') return false;
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY' && tc.contractId !== f.contract) return false;
+    if (!isDateInRange(tc.commenceDate) && !isDateInRange(tc.expiryDate)) return false;
+    return true;
+  });
+
+  // 5. Filter Voyage Contracts
+  const filteredVCs = state.data.vcs.filter(vc => {
+    if (activeScope && activeScope.length > 0 && !scopedContractIds.has(vc.contractId)) return false;
+    if (f.org !== 'ALL' && vc.organizationId !== f.org) return false;
+    if (f.ship !== 'ALL' && vc.vesselImo !== f.ship) return false;
+    if (f.contract === 'TC_ONLY') return false;
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY' && vc.contractId !== f.contract) return false;
+    if (!isDateInRange(vc.laycanStart) && !isDateInRange(vc.laycanEnd)) return false;
+    return true;
+  });
+
+  const validContractIds = new Set([
+    ...filteredTCs.map(tc => tc.contractId),
+    ...filteredVCs.map(vc => vc.contractId),
+    ...scopedContractIds
+  ]);
+
+  const scopedImos = new Set([
+    ...filteredTCs.map(tc => tc.vesselImo),
+    ...filteredVCs.map(vc => vc.vesselImo)
+  ]);
+
   // 1. Filter Vessels
   const filteredVessels = state.data.vessels.filter(v => {
+    if (activeScope && activeScope.length > 0 && scopedImos.size > 0 && !scopedImos.has(v.imo)) return false;
     if (f.org !== 'ALL' && v.organizationId !== f.org) return false;
     if (f.fleetType !== 'ALL' && v.fleetType !== f.fleetType) return false;
     if (f.ship !== 'ALL' && v.imo !== f.ship && v.name !== f.ship) return false;
@@ -209,7 +267,7 @@ export function getFilteredData() {
   // 2. Filter Organizations
   const filteredOrgs = state.data.orgs.filter(o => {
     if (f.org !== 'ALL' && o.id !== f.org) return false;
-    if (f.fleetType !== 'ALL' || f.ship !== 'ALL') {
+    if (f.fleetType !== 'ALL' || f.ship !== 'ALL' || (activeScope && activeScope.length > 0)) {
       if (!validOrgIds.has(o.id)) return false;
     }
     return true;
@@ -223,33 +281,6 @@ export function getFilteredData() {
     return true;
   });
 
-  // 4. Filter Time Contracts
-  const filteredTCs = state.data.tcs.filter(tc => {
-    if (f.org !== 'ALL' && tc.organizationId !== f.org) return false;
-    if (f.ship !== 'ALL' && tc.vesselImo !== f.ship) return false;
-    if (f.fleetType !== 'ALL' && !validImos.has(tc.vesselImo)) return false;
-    if (f.contract === 'VC_ONLY') return false;
-    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY' && tc.contractId !== f.contract) return false;
-    if (!isDateInRange(tc.commenceDate) && !isDateInRange(tc.expiryDate)) return false;
-    return true;
-  });
-
-  // 5. Filter Voyage Contracts
-  const filteredVCs = state.data.vcs.filter(vc => {
-    if (f.org !== 'ALL' && vc.organizationId !== f.org) return false;
-    if (f.ship !== 'ALL' && vc.vesselImo !== f.ship) return false;
-    if (f.fleetType !== 'ALL' && !validImos.has(vc.vesselImo)) return false;
-    if (f.contract === 'TC_ONLY') return false;
-    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY' && vc.contractId !== f.contract) return false;
-    if (!isDateInRange(vc.laycanStart) && !isDateInRange(vc.laycanEnd)) return false;
-    return true;
-  });
-
-  const validContractIds = new Set([
-    ...filteredTCs.map(tc => tc.contractId),
-    ...filteredVCs.map(vc => vc.contractId)
-  ]);
-
   // 6. Filter Charter Party Forms
   const filteredCPs = state.data.cps.filter(cp => {
     if (role === 'charterer' && !cp.charterer.toLowerCase().includes('charter')) return true;
@@ -258,6 +289,9 @@ export function getFilteredData() {
 
   // 7. Filter Rider Clauses
   const filteredRiders = state.data.riders.filter(r => {
+    if (activeScope && activeScope.length > 0) {
+      if (!validContractIds.has(r.associatedContractId)) return false;
+    }
     if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
       if (r.associatedContractId !== f.contract) return false;
     } else if (f.org !== 'ALL' || f.ship !== 'ALL' || f.fleetType !== 'ALL') {
@@ -268,6 +302,9 @@ export function getFilteredData() {
 
   // 8. Filter Master Instructions
   const filteredMasters = state.data.masters.filter(m => {
+    if (activeScope && activeScope.length > 0) {
+      if (!validContractIds.has(m.contractId) && !validImos.has(m.vesselImo)) return false;
+    }
     if (f.ship !== 'ALL' && m.vesselImo !== f.ship) return false;
     if (f.org !== 'ALL' || f.fleetType !== 'ALL') {
       if (!validImos.has(m.vesselImo)) return false;
@@ -281,29 +318,14 @@ export function getFilteredData() {
 
   // 9. Filter Insurance Policies
   const filteredInsurance = state.data.insurance.filter(p => {
+    if (activeScope && activeScope.length > 0) {
+      if (!validImos.has(p.vesselImo)) return false;
+    }
     if (f.ship !== 'ALL' && p.vesselImo !== f.ship) return false;
     if (f.org !== 'ALL' || f.fleetType !== 'ALL') {
       if (!validImos.has(p.vesselImo)) return false;
     }
     if (!isDateInRange(p.expiryDate)) return false;
-    return true;
-  });
-
-  // 10. Filter Contract Validations
-  const filteredValidations = (state.data.validations || []).filter(v => {
-    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
-      if (v.associatedContractId !== f.contract) return false;
-    }
-    return true;
-  });
-
-  const validDocIds = new Set(filteredValidations.map(v => v.id));
-
-  // 11. Filter Audit Logs
-  const filteredAuditLogs = (state.data.auditLogs || []).filter(a => {
-    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
-      if (!validDocIds.has(a.docId)) return false;
-    }
     return true;
   });
 
@@ -1239,6 +1261,7 @@ function renderContractValidationView(filtered) {
     : auditLogs.filter(a => a.docId === selectedDocId);
 
   const activeIngestTab = state.ingestTab || 'upload';
+  const valMode = state.validationMode || 'new';
 
   const systemFixtures = [
     ...(state.data.tcs || []).map(t => ({ id: t.contractId, name: `${t.contractId} · ${t.vesselName} (Time Charter)` })),
@@ -1249,102 +1272,176 @@ function renderContractValidationView(filtered) {
 
   return `
     <div class="dwrap">
-      <!-- SUB-HEADER BAR -->
-      <div class="sub-h-bar">
+      <!-- SUB-HEADER BAR WITH ACTIONS -->
+      <div class="sub-h-bar" style="flex-wrap:wrap;gap:0.75rem">
         <div>
           <div class="sub-h-title">🔍 Contract Validation & Verification Engine</div>
           <div class="sub-h-sub">Verifying completeness, identifying missing/conflicting clauses & recommending corrections based on BIMCO, MARPOL & LMAA governance</div>
         </div>
-        <div style="display:flex;gap:0.5rem">
-          <button class="btn-c btn-c-primary btn-sm" onclick="window.reAuditContracts()">⚡ RE-AUDIT ALL CONTRACT DOCUMENTS</button>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn-c btn-c-primary btn-sm" onclick="window.openExecutiveSummary()">📊 VIEW & SHARE EXECUTIVE SUMMARY</button>
+          <button class="btn-c btn-c-sec btn-sm" style="border-color:var(--cyan);color:var(--cyan)" onclick="window.openClauseWhatIfSimulator()">🔮 WHAT-IF CLAUSE SIMULATOR</button>
+          <button class="btn-c btn-c-sec btn-sm" onclick="window.reAuditContracts()">⚡ RE-AUDIT ALL</button>
         </div>
       </div>
 
-      <!-- NEW INGESTION SECTION: DOCUMENT INGESTION & AI VALIDATION PIPELINE -->
-      <div class="ingest-box-container">
-        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
+      <!-- VALIDATION MODE SELECTOR BAR -->
+      <div style="background:var(--surface-2);border:1px solid var(--edge);border-radius:var(--r);padding:0.65rem 0.85rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.65rem">
+        <div style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--ink-3);font-family:'Archivo'">VALIDATION ENGINE MODE:</span>
+          <div class="ingest-tab-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none">
+            <button class="ingest-tab-btn ${valMode === 'new' ? 'active' : ''}" onclick="window.setValidationMode('new')">
+              🆕 New Document Analysis (Live Ingestion)
+            </button>
+            <button class="ingest-tab-btn ${valMode === 'historical' ? 'active' : ''}" onclick="window.setValidationMode('historical')">
+              📜 Historical Document Repository & Audit
+            </button>
+          </div>
+        </div>
+
+        ${state.activeDocumentScope ? `
           <div style="display:flex;align-items:center;gap:6px">
-            <span>📥</span> CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
+            <span class="mono" style="font-size:0.68rem;color:var(--signal);background:rgba(155,229,100,0.14);padding:3px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.35)">
+              🎯 CONSOLE SCOPE: ${state.activeDocumentScope.length} DOC(S) ACTIVE ACROSS ALL SUBMODULES
+            </span>
+            <button class="btn-c btn-c-rose btn-xs" onclick="window.clearConsoleScope()">🧹 CLEAR SCOPE & SHOW ALL</button>
           </div>
-          <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
-            TEGRITY AI ENGINE READY
-          </span>
-        </div>
-
-        <!-- Ingestion Mode Selector Tabs -->
-        <div class="ingest-tab-bar">
-          <button class="ingest-tab-btn ${activeIngestTab === 'upload' ? 'active' : ''}" onclick="window.switchIngestTab('upload')">
-            📁 Browse / Drag & Drop Local Document
-          </button>
-          <button class="ingest-tab-btn ${activeIngestTab === 'system' ? 'active' : ''}" onclick="window.switchIngestTab('system')">
-            📜 Select Existing System Fixture / Agreement
-          </button>
-        </div>
-
-        ${activeIngestTab === 'upload' ? `
-          <!-- DRAG AND DROP & BROWSE FILE UPLOADER -->
-          <div class="ingest-dropzone" id="ingest-dropzone" 
-               ondragover="window.handleDragOver(event)" 
-               ondragleave="window.handleDragLeave(event)" 
-               ondrop="window.handleFileDrop(event)"
-               onclick="window.triggerBrowseFile()">
-            <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg" multiple>
-            <div class="ingest-icon">📂</div>
-            <div class="ingest-title">Drag & Drop Contract File(s) Here, or Click to Browse</div>
-            <div class="ingest-desc">Supports Multi-File Selection: PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
-            <div style="margin-top:0.75rem">
-              <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
-                📁 BROWSE LOCAL FILES
-              </button>
-            </div>
-          </div>
-
-          <!-- RECENTLY LOADED DOCUMENTS STAGING QUEUE -->
-          ${renderStagedDocumentsQueue()}
         ` : `
-          <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
-          <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-            <div style="flex:1;min-width:250px">
-              <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT SYSTEM CONTRACT / FIXTURE RECORD:</label>
-              <select id="ingest-system-fixture-select" class="c-select-xs" style="width:100%;font-size:0.78rem">
-                ${systemFixtures.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
-              </select>
-            </div>
-            <div style="display:flex;align-items:flex-end;margin-top:1.2rem">
-              <button class="btn-c btn-c-primary btn-sm" onclick="window.processSystemFixtureIngestion()">
-                ⚡ PROCESS & VALIDATE FIXTURE
-              </button>
-            </div>
-          </div>
+          <span style="font-size:0.68rem;color:var(--ink-3)">Console Scope: <b>All Repository Contracts Active</b></span>
         `}
-
-        <!-- PROCESSING ANIMATION / PROGRESS INDICATOR (If Active) -->
-        <div id="ingest-processing-banner" style="display:none" class="ingest-progress-box">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
-            <div style="font-weight:700;color:var(--signal);font-size:0.8rem;display:flex;align-items:center;gap:6px">
-              <span class="pip live dot"></span>
-              <span id="ingest-status-text">Ingesting document & extracting clauses...</span>
-            </div>
-            <span class="mono" style="font-size:0.75rem;color:var(--ink)" id="ingest-pct-text">25%</span>
-          </div>
-
-          <div class="val-progress-bar" style="height:6px">
-            <div id="ingest-progress-fill" class="val-progress-fill high" style="width:25%"></div>
-          </div>
-
-          <div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--ink-2);margin-top:0.5rem" id="ingest-steps-list">
-            <span>[✔] Document Structure Parsed</span>
-            <span>[🔄] Verifying Governance Clauses</span>
-            <span>[⏳] Calculating Financial Risk Exposure</span>
-          </div>
-        </div>
       </div>
 
+      ${valMode === 'new' ? `
+        <!-- MODE 1: NEW DOCUMENT ANALYSIS & LIVE INGESTION PIPELINE -->
+        <div class="ingest-box-container">
+          <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span>📥</span> NEW CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
+            </div>
+            <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
+              TEGRITY AI ENGINE READY
+            </span>
+          </div>
+
+          <!-- Ingestion Mode Selector Tabs -->
+          <div class="ingest-tab-bar">
+            <button class="ingest-tab-btn ${activeIngestTab === 'upload' ? 'active' : ''}" onclick="window.switchIngestTab('upload')">
+              📁 Browse / Drag & Drop Local File(s)
+            </button>
+            <button class="ingest-tab-btn ${activeIngestTab === 'system' ? 'active' : ''}" onclick="window.switchIngestTab('system')">
+              📜 Select Existing System Fixture / Agreement
+            </button>
+          </div>
+
+          ${activeIngestTab === 'upload' ? `
+            <!-- DRAG AND DROP & BROWSE FILE UPLOADER -->
+            <div class="ingest-dropzone" id="ingest-dropzone" 
+                 ondragover="window.handleDragOver(event)" 
+                 ondragleave="window.handleDragLeave(event)" 
+                 ondrop="window.handleFileDrop(event)"
+                 onclick="window.triggerBrowseFile()">
+              <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg" multiple>
+              <div class="ingest-icon">📂</div>
+              <div class="ingest-title">Drag & Drop Contract File(s) Here, or Click to Browse</div>
+              <div class="ingest-desc">Supports Multi-File Selection: PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
+              <div style="margin-top:0.75rem">
+                <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
+                  📁 BROWSE LOCAL FILES
+                </button>
+              </div>
+            </div>
+
+            <!-- RECENTLY LOADED DOCUMENTS STAGING QUEUE -->
+            ${renderStagedDocumentsQueue()}
+          ` : `
+            <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
+            <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT SYSTEM CONTRACT / FIXTURE RECORD:</label>
+                <select id="ingest-system-fixture-select" class="c-select-xs" style="width:100%;font-size:0.78rem">
+                  ${systemFixtures.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+                </select>
+              </div>
+              <div style="display:flex;align-items:flex-end;margin-top:1.2rem">
+                <button class="btn-c btn-c-primary btn-sm" onclick="window.processSystemFixtureIngestion()">
+                  ⚡ PROCESS & VALIDATE FIXTURE
+                </button>
+              </div>
+            </div>
+          `}
+
+          <!-- PROCESSING ANIMATION / PROGRESS INDICATOR (If Active) -->
+          <div id="ingest-processing-banner" style="display:none" class="ingest-progress-box">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+              <div style="font-weight:700;color:var(--signal);font-size:0.8rem;display:flex;align-items:center;gap:6px">
+                <span class="pip live dot"></span>
+                <span id="ingest-status-text">Ingesting document & extracting clauses...</span>
+              </div>
+              <span class="mono" style="font-size:0.75rem;color:var(--ink)" id="ingest-pct-text">25%</span>
+            </div>
+
+            <div class="val-progress-bar" style="height:6px">
+              <div id="ingest-progress-fill" class="val-progress-fill high" style="width:25%"></div>
+            </div>
+
+            <div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--ink-2);margin-top:0.5rem" id="ingest-steps-list">
+              <span>[✔] Document Structure Parsed</span>
+              <span>[🔄] Verifying Governance Clauses</span>
+              <span>[⏳] Calculating Financial Risk Exposure</span>
+            </div>
+          </div>
+        </div>
+      ` : `
+        <!-- MODE 2: HISTORICAL DOCUMENT REPOSITORY & AUDIT ARCHIVE -->
+        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+            <div>
+              <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
+                📜 HISTORICAL EXECUTED CONTRACTS & ADDENDUMS ARCHIVE
+              </div>
+              <div style="font-size:0.7rem;color:var(--ink-3)">
+                Review historical validation records, pre-populate dashboard statistics, and conduct cross-fixture trend analysis.
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn-c btn-c-primary btn-xs" onclick="window.setConsoleScope(state.data.validations.map(v=>v.id))">
+                🎯 SCOPE CONSOLE TO ALL HISTORICAL DOCS
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.75rem">
+            ${(state.data.validations || []).map(hv => `
+              <div style="background:var(--surface-2);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <span class="mono" style="font-size:0.68rem;color:var(--signal);font-weight:700">${hv.docRef}</span>
+                  <span class="st ${hv.completenessScore >= 88 ? 'good' : 'warn'}" style="font-size:0.62rem">${hv.completenessScore}% Index</span>
+                </div>
+                <div style="font-size:0.78rem;font-weight:700;color:var(--ink);margin-bottom:4px">${hv.title}</div>
+                <div style="font-size:0.68rem;color:var(--ink-3);margin-bottom:6px">
+                  Counterparty: <b>${hv.counterparty}</b> · Date: <b>${hv.auditDate}</b>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <button class="btn-c btn-c-primary btn-xs" style="padding:2px 6px" onclick="window.setConsoleScope(['${hv.id}'])">🎯 Scope Console</button>
+                  <button class="btn-c btn-c-sec btn-xs" style="padding:2px 6px" onclick="window.openExecutiveSummary(['${hv.id}'])">📊 Executive Summary</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `}
 
       <!-- SECTION 1: CONTRACT COMPLETENESS & VERIFICATION MATRIX -->
       <div style="margin-bottom:1.5rem">
-        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;gap:6px">
-          <span>📊</span> CONTRACT COMPLETENESS & RISK AUDIT MATRIX (${validations.length} DOCS AUDITED)
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>📊</span> CONTRACT COMPLETENESS & RISK AUDIT MATRIX (${validations.length} DOCS AUDITED)
+          </div>
+          ${validations.length > 0 ? `
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.openExecutiveSummary([${validations.map(v => `'${v.id}'`).join(',')}])">
+              📊 VIEW EXECUTIVE SUMMARY FOR ALL (${validations.length})
+            </button>
+          ` : ''}
         </div>
         <div class="val-grid-2">
           ${validations.map(v => {
@@ -1382,11 +1479,17 @@ function renderContractValidationView(filtered) {
                   </div>
                 </div>
 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem">
-                  <button class="btn-c btn-c-sec btn-xs" onclick="window.selectEntity('validations', '${v.id}')">Inspect Record</button>
-                  <button class="btn-c ${isSelected ? 'btn-c-primary' : 'btn-c-sec'} btn-xs" onclick="window.filterValidationByDoc('${isSelected ? 'ALL' : v.id}')">
-                    ${isSelected ? 'Showing Filtered Line Items (Click to Reset)' : '🔍 Scope Clause Line Items'}
-                  </button>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.65rem;flex-wrap:wrap;gap:0.4rem">
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-c btn-c-primary btn-xs" onclick="window.openExecutiveSummary(['${v.id}'])">📊 Summary</button>
+                    <button class="btn-c btn-c-sec btn-xs" onclick="window.setConsoleScope(['${v.id}'])">🎯 Scope Console</button>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-c btn-c-sec btn-xs" onclick="window.selectEntity('validations', '${v.id}')">Inspect</button>
+                    <button class="btn-c ${isSelected ? 'btn-c-primary' : 'btn-c-sec'} btn-xs" onclick="window.filterValidationByDoc('${isSelected ? 'ALL' : v.id}')">
+                      ${isSelected ? 'Reset Filter' : '🔍 Scope Items'}
+                    </button>
+                  </div>
                 </div>
               </div>
             `;
@@ -3185,11 +3288,14 @@ window.triggerBatchAnalysis = function() {
         doc.analysisResultDocId = newDocId;
       });
 
+      // Automatically scope console & all submodules to newly analyzed documents
+      state.activeDocumentScope = selectedDocs.map(d => d.analysisResultDocId).filter(Boolean);
+
       saveState('validations');
       saveState('auditLogs');
       saveState('stagedDocs');
 
-      window.showToast(`✅ Successfully analyzed ${selectedDocs.length} contract document(s)! Validation Matrix & Audit Logs updated.`);
+      window.showToast(`✅ Successfully analyzed ${selectedDocs.length} contract document(s)! Scoped console & submodules to new analysis.`);
       renderApp();
     }
   }, 200);
@@ -3741,6 +3847,347 @@ window.jumpToEntity = function(tabName, entityId) {
   state.selectedEntity = { category, id: entityId };
 
   window.showToast(`🔍 Jumped to ${targetTab.toUpperCase()} entity (${entityId})`);
+  renderApp();
+};
+
+window.setValidationMode = function(mode) {
+  state.validationMode = mode;
+  renderApp();
+};
+
+window.setConsoleScope = function(docIds) {
+  state.activeDocumentScope = docIds && docIds.length > 0 ? docIds : null;
+  saveState('validations');
+  window.showToast(state.activeDocumentScope ? `🎯 Applied Document Scope (${docIds.length} doc(s) active console-wide)` : '🧹 Cleared Console Scope (Showing all data)');
+  renderApp();
+};
+
+window.clearConsoleScope = function() {
+  state.activeDocumentScope = null;
+  renderApp();
+};
+
+// ── EXECUTIVE SUMMARY FINDINGS & RECOMMENDATIONS MODAL ──
+window.openExecutiveSummary = function(docIdList) {
+  const validations = state.data.validations || [];
+  const auditLogs = state.data.auditLogs || [];
+
+  let targetDocs = validations;
+  if (docIdList && docIdList.length > 0) {
+    targetDocs = validations.filter(v => docIdList.includes(v.id));
+  } else if (state.activeDocumentScope) {
+    targetDocs = validations.filter(v => state.activeDocumentScope.includes(v.id));
+  }
+
+  if (targetDocs.length === 0) {
+    targetDocs = validations;
+  }
+
+  const targetDocIds = new Set(targetDocs.map(d => d.id));
+  const targetLogs = auditLogs.filter(a => targetDocIds.has(a.docId));
+
+  const totalDocs = targetDocs.length;
+  const avgCompleteness = Math.round(targetDocs.reduce((acc, d) => acc + (d.completenessScore || 0), 0) / (totalDocs || 1));
+  const totalExposure = targetDocs.reduce((acc, d) => acc + (d.financialExposureUSD || 0), 0);
+  const highRiskCount = targetDocs.reduce((acc, d) => acc + (d.highRiskCount || 0), 0);
+  const medRiskCount = targetDocs.reduce((acc, d) => acc + (d.mediumRiskCount || 0), 0);
+  const lowRiskCount = targetDocs.reduce((acc, d) => acc + (d.lowRiskCount || 0), 0);
+
+  const title = `📊 EXECUTIVE SUMMARY: FINDINGS & GOVERNANCE RECOMMENDATIONS (${totalDocs} DOCS)`;
+
+  const summaryTextForCopy = `TEGRITY VOYAGE MANAGEMENT — EXECUTIVE CONTRACT AUDIT SUMMARY
+============================================================
+Date: ${new Date().toISOString().split('T')[0]}
+Audited Documents: ${totalDocs}
+Overall Completeness Index: ${avgCompleteness}%
+Total Financial Risk Exposure: $${totalExposure.toLocaleString()} USD
+Risk Distribution: ${highRiskCount} High Risk | ${medRiskCount} Medium Risk | ${lowRiskCount} Low Risk
+
+TOP GOVERNANCE DISCREPANCIES & RECOMMENDATIONS:
+${targetLogs.slice(0, 5).map((log, i) => `
+${i + 1}. [${log.riskLevel} RISK] ${log.docRef} · ${log.clauseRef}
+   - Issue: ${log.issueType} (${log.category})
+   - Risk: ${log.riskSummary}
+   - Proposed Wording: "${log.proposedText}"
+   - Tegrity AI Rec: "${log.tegrityRecommendation}"
+   - Precedent Reference: ${log.referencePrecedent}
+`).join('')}
+
+EXECUTIVE RECOMMENDED ACTION STEPS:
+1. Immediately issue Rider Addendums incorporating BIMCO 2023 EU ETS and MARPOL Annex VI sampling clauses.
+2. Require counterparty agreement on CONWARTIME 2013 Red Sea war risk premium allocation prior to vessel fixture execution.
+3. Align demurrage claim notification windows to BPVOY4 standard 90-day time-bars to avoid loss of legitimate recovery.
+
+Report Link: https://tegrity-tvm-web-uoklz4qdla-uc.a.run.app/?scope=${Array.from(targetDocIds).join(',')}
+  `.trim();
+
+  const html = `
+    <div>
+      <!-- EXECUTIVE METRIC TILES -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:0.75rem;margin-bottom:1rem">
+        <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
+          <div style="font-size:0.68rem;color:var(--ink-3)">DOCUMENTS AUDITED</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--signal);font-family:'IBM Plex Mono'">${totalDocs}</div>
+        </div>
+
+        <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
+          <div style="font-size:0.68rem;color:var(--ink-3)">COMPLETENESS INDEX</div>
+          <div style="font-size:1.5rem;font-weight:800;color:${avgCompleteness >= 85 ? 'var(--good)' : 'var(--amber)'};font-family:'IBM Plex Mono'">${avgCompleteness}%</div>
+        </div>
+
+        <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
+          <div style="font-size:0.68rem;color:var(--ink-3)">FINANCIAL RISK EXPOSURE</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--rose);font-family:'IBM Plex Mono'">$${totalExposure.toLocaleString()}</div>
+        </div>
+
+        <div style="background:rgba(3,14,23,0.6);border:1px solid var(--edge);padding:0.75rem;border-radius:4px">
+          <div style="font-size:0.68rem;color:var(--ink-3)">RISK BREAKDOWN</div>
+          <div style="font-size:0.75rem;font-weight:700;margin-top:4px">
+            <span style="color:var(--rose)">${highRiskCount} High</span> · 
+            <span style="color:var(--amber)">${medRiskCount} Med</span> · 
+            <span style="color:var(--good)">${lowRiskCount} Low</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISCREPANCIES & RECOMMENDATIONS TABLE -->
+      <div style="font-weight:700;font-size:0.85rem;color:var(--ink);margin-bottom:0.5rem">
+        📋 KEY GOVERNANCE DISCREPANCIES & AI RECOMMENDATIONS (${targetLogs.length} AUDIT ITEMS)
+      </div>
+
+      <div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem;padding-right:4px">
+        ${targetLogs.map(log => `
+          <div style="background:var(--surface);border:1px solid var(--edge);border-left:3px solid ${log.riskLevel === 'High' ? 'var(--rose)' : log.riskLevel === 'Medium' ? 'var(--amber)' : 'var(--good)'};padding:0.6rem;border-radius:4px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+              <div>
+                <span class="mono" style="font-size:0.68rem;color:var(--signal)">${log.docRef}</span>
+                <span style="font-size:0.75rem;font-weight:700;color:var(--ink);margin-left:6px">${log.clauseRef}</span>
+              </div>
+              <span class="risk-badge ${log.riskLevel === 'High' ? 'risk-badge-high' : log.riskLevel === 'Medium' ? 'risk-badge-med' : 'risk-badge-low'}">${log.riskLevel} RISK</span>
+            </div>
+
+            <div style="font-size:0.72rem;color:var(--ink-2);margin:4px 0">
+              ⚠️ <b>Risk Assessment:</b> ${log.riskSummary}
+            </div>
+
+            <div class="comparison-box" style="margin-top:0.4rem;padding:0.4rem">
+              <div class="comp-col">
+                <label style="font-size:0.62rem">Proposed Wording</label>
+                <div class="comp-text-proposed" style="font-size:0.68rem">${log.proposedText}</div>
+              </div>
+              <div class="comp-col">
+                <label style="font-size:0.62rem">Tegrity Recommendation</label>
+                <div class="comp-text-recommended" style="font-size:0.68rem">${log.tegrityRecommendation}</div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- ACTION PLAN CHECKLIST -->
+      <div style="background:rgba(155,229,100,0.06);border:1px solid rgba(155,229,100,0.25);padding:0.75rem;border-radius:4px;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:0.8rem;color:var(--signal);margin-bottom:0.3rem">
+          🎯 EXECUTIVE ACTION PLAN & GOVERNANCE STEPS
+        </div>
+        <ul style="margin:0;padding-left:1.2rem;font-size:0.72rem;color:var(--ink-2);line-height:1.5">
+          <li><b>Legal Review:</b> Approve standard rider wording for EU ETS allowance transfers and MARPOL Annex VI sampling retention.</li>
+          <li><b>Commercial Execution:</b> Require counterparty written concurrence on Red Sea War Risk premium sharing before fixture confirmation.</li>
+          <li><b>Claims Management:</b> Pre-populate demurrage notification templates to strictly meet the 90-day time-bar requirement.</li>
+        </ul>
+      </div>
+
+      <!-- SHARING & EXPORT ACTIONS BAR -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--edge);padding-top:0.75rem;flex-wrap:wrap;gap:0.5rem">
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn-c btn-c-primary btn-xs" onclick="navigator.clipboard.writeText(\`${summaryTextForCopy.replace(/`/g, '\\`')}\`); window.showToast('📋 Executive Summary copied to clipboard!')">
+            📋 COPY SUMMARY TEXT
+          </button>
+          <button class="btn-c btn-c-sec btn-xs" onclick="navigator.clipboard.writeText(window.location.href); window.showToast('🔗 Executive Report Link copied!')">
+            🔗 SHARE REPORT LINK
+          </button>
+          <button class="btn-c btn-c-sec btn-xs" onclick="window.print()">
+            🖨️ PRINT / EXPORT PDF
+          </button>
+        </div>
+
+        <button class="btn-c btn-c-sec btn-xs" onclick="window.setConsoleScope([${Array.from(targetDocIds).map(id => `'${id}'`).join(',')}])">
+          🎯 SCOPE CONSOLE TO THESE ${totalDocs} DOCS
+        </button>
+      </div>
+    </div>
+  `;
+
+  createLargeModalContainer(title, html);
+};
+
+// ── CLAUSE WHAT-IF SCENARIO ANALYSIS SIMULATOR ──
+window.openClauseWhatIfSimulator = function() {
+  const validations = state.data.validations || [];
+
+  const clauseTemplates = [
+    {
+      id: 'ets',
+      name: 'BIMCO 2023 Emission Trading Scheme (ETS) Allowances Clause',
+      category: 'Environmental Compliance',
+      riskReductionPct: 75,
+      wording: 'Charterers shall provide and transfer EU Allowances (EUA) to Owners on a monthly basis corresponding to actual fuel consumption under EU Directive 2023/959.'
+    },
+    {
+      id: 'war',
+      name: 'CONWARTIME 2013 / BIMCO War Risks Premium & Route Clause',
+      category: 'War Risk & Transit',
+      riskReductionPct: 85,
+      wording: 'Charterers pay all additional war risk insurance premiums, additional crew bonuses, and vessel waiting time incurred due to Red Sea / High Risk Area transits.'
+    },
+    {
+      id: 'marpol',
+      name: 'MARPOL Annex VI Fuel Sulfur <0.50% & Retained Sample Warranty',
+      category: 'Bunker Quality',
+      riskReductionPct: 80,
+      wording: 'Charterers warrant all fuel supplied strictly complies with ISO 8217:2017 & MARPOL Annex VI (<0.50% S), with mandatory retained sealed MARPOL samples retained on board.'
+    },
+    {
+      id: 'demurrage',
+      name: 'BPVOY4 Clause 20 Laytime Demurrage 90-Day Time-Bar Standard',
+      category: 'Laytime & Demurrage',
+      riskReductionPct: 65,
+      wording: 'Demurrage claims supported by Statement of Facts (SOF) and time-sheets shall be rendered within 90 days of discharge completion. Failure to render within 90 days bars claim.'
+    }
+  ];
+
+  const html = `
+    <div>
+      <div style="font-size:0.75rem;color:var(--ink-2);margin-bottom:0.85rem">
+        Simulate the financial, operational, and legal compliance impact of enforcing a mandatory governance clause standard across selected repository contract documents.
+      </div>
+
+      <!-- CONTROLS FORM -->
+      <div style="background:var(--surface);border:1px solid var(--edge);padding:0.85rem;border-radius:4px;margin-bottom:1rem;display:flex;flex-direction:column;gap:0.75rem">
+        <div>
+          <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT GOVERNANCE CLAUSE TO ENFORCE:</label>
+          <select id="whatif-clause-select" class="c-select-xs" style="width:100%;font-size:0.78rem" onchange="window.updateWhatIfSimulationPreview()">
+            ${clauseTemplates.map(c => `<option value="${c.id}">${c.name} (${c.category})</option>`).join('')}
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">TARGET REPOSITORY DOCUMENTS (${validations.length} AVAILABLE):</label>
+          <div style="max-height:120px;overflow-y:auto;background:rgba(3,14,23,0.5);border:1px solid var(--edge);padding:0.5rem;border-radius:3px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;color:var(--signal);margin-bottom:4px">
+              <input type="checkbox" id="whatif-select-all-docs" checked onchange="document.querySelectorAll('.whatif-doc-check').forEach(c => c.checked = this.checked); window.updateWhatIfSimulationPreview()">
+              Select All Documents
+            </label>
+            ${validations.map(v => `
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--ink-2);margin-bottom:2px">
+                <input type="checkbox" class="whatif-doc-check" value="${v.id}" checked onchange="window.updateWhatIfSimulationPreview()">
+                <span>${v.docRef} · ${v.title}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULATION RESULT METRICS PREVIEW -->
+      <div id="whatif-results-preview">
+        <!-- Dynamically rendered by updateWhatIfSimulationPreview() -->
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem">
+        <button class="btn-c btn-c-primary btn-sm" onclick="window.applyWhatIfClauseEnforcement()">
+          💾 BATCH ENFORCE CLAUSE & UPDATE REPOSITORY
+        </button>
+      </div>
+    </div>
+  `;
+
+  createLargeModalContainer('🔮 CLAUSE WHAT-IF SCENARIO ANALYSIS & COMPLIANCE SIMULATOR', html);
+  setTimeout(() => window.updateWhatIfSimulationPreview(), 50);
+};
+
+window.updateWhatIfSimulationPreview = function() {
+  const previewBox = document.getElementById('whatif-results-preview');
+  if (!previewBox) return;
+
+  const clauseId = document.getElementById('whatif-clause-select')?.value || 'ets';
+  const checkedDocs = Array.from(document.querySelectorAll('.whatif-doc-check:checked')).map(c => c.value);
+
+  const validations = state.data.validations || [];
+  const targetDocs = validations.filter(v => checkedDocs.includes(v.id));
+
+  const totalExposureBefore = targetDocs.reduce((acc, d) => acc + (d.financialExposureUSD || 0), 0);
+  
+  const reductionPct = clauseId === 'war' ? 0.85 : clauseId === 'ets' ? 0.75 : clauseId === 'marpol' ? 0.80 : 0.65;
+  const exposureSaved = Math.round(totalExposureBefore * reductionPct);
+  const totalExposureAfter = totalExposureBefore - exposureSaved;
+
+  const avgScoreBefore = Math.round(targetDocs.reduce((acc, d) => acc + (d.completenessScore || 0), 0) / (targetDocs.length || 1));
+  const avgScoreAfter = Math.min(99, avgScoreBefore + 14);
+
+  previewBox.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:0.75rem;margin-bottom:1rem">
+      <div style="background:rgba(3,14,23,0.6);border:1px solid var(--signal);padding:0.75rem;border-radius:4px">
+        <div style="font-size:0.66rem;color:var(--ink-3)">FINANCIAL RISK REDUCTION</div>
+        <div style="font-size:1.4rem;font-weight:800;color:var(--signal);font-family:'IBM Plex Mono'">-$${exposureSaved.toLocaleString()}</div>
+        <div style="font-size:0.68rem;color:var(--ink-2)">Before: $${totalExposureBefore.toLocaleString()} ➔ After: $${totalExposureAfter.toLocaleString()}</div>
+      </div>
+
+      <div style="background:rgba(3,14,23,0.6);border:1px solid var(--good);padding:0.75rem;border-radius:4px">
+        <div style="font-size:0.66rem;color:var(--ink-3)">COMPLETENESS SCORE SHIFT</div>
+        <div style="font-size:1.4rem;font-weight:800;color:var(--good);font-family:'IBM Plex Mono'">+${avgScoreAfter - avgScoreBefore}%</div>
+        <div style="font-size:0.68rem;color:var(--ink-2)">Before: ${avgScoreBefore}% ➔ After: ${avgScoreAfter}%</div>
+      </div>
+
+      <div style="background:rgba(3,14,23,0.6);border:1px solid var(--cyan);padding:0.75rem;border-radius:4px">
+        <div style="font-size:0.66rem;color:var(--ink-3)">DISPUTE RISK RATING</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--cyan);margin-top:2px">LOW DISPUTE RISK</div>
+        <div style="font-size:0.68rem;color:var(--good)">✔ Governance Standard Enforced</div>
+      </div>
+    </div>
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--ink);margin-bottom:0.4rem">
+      📋 SIMULATED DOCUMENT COMPLIANCE IMPACT (${targetDocs.length} TARGET DOCS)
+    </div>
+
+    <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:0.4rem">
+      ${targetDocs.map(d => `
+        <div style="background:var(--surface);border:1px solid var(--edge);padding:0.45rem 0.6rem;border-radius:3px;display:flex;align-items:center;justify-content:space-between;font-size:0.72rem">
+          <div>
+            <span class="mono" style="color:var(--signal);font-weight:600">${d.docRef}</span>
+            <span style="color:var(--ink);margin-left:6px">${d.title}</span>
+          </div>
+          <div style="display:flex;gap:12px" class="mono">
+            <span style="color:var(--rose)">Before: $${(d.financialExposureUSD || 0).toLocaleString()}</span>
+            <span style="color:var(--signal);font-weight:700">After: $${Math.round((d.financialExposureUSD || 0) * (1 - reductionPct)).toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+};
+
+window.applyWhatIfClauseEnforcement = function() {
+  const clauseId = document.getElementById('whatif-clause-select')?.value || 'ets';
+  const checkedDocs = Array.from(document.querySelectorAll('.whatif-doc-check:checked')).map(c => c.value);
+
+  if (checkedDocs.length === 0) {
+    window.showToast('⚠️ Please select at least one document to enforce clause.');
+    return;
+  }
+
+  const reductionPct = clauseId === 'war' ? 0.85 : clauseId === 'ets' ? 0.75 : clauseId === 'marpol' ? 0.80 : 0.65;
+
+  state.data.validations.forEach(v => {
+    if (checkedDocs.includes(v.id)) {
+      v.financialExposureUSD = Math.round((v.financialExposureUSD || 0) * (1 - reductionPct));
+      v.completenessScore = Math.min(98, (v.completenessScore || 80) + 12);
+      v.highRiskCount = Math.max(0, (v.highRiskCount || 1) - 1);
+      v.passedClauses = Math.min(v.totalClauses || 20, (v.passedClauses || 15) + 2);
+    }
+  });
+
+  saveState('validations');
+  window.showToast(`⚡ Enforced clause standard across ${checkedDocs.length} document(s)! Updated repository.`);
+  document.getElementById('blade-overlay')?.remove();
   renderApp();
 };
 
