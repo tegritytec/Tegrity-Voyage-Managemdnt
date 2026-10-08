@@ -1399,6 +1399,142 @@ table.dtable tbody tr.row-selected td {
   box-shadow: 0 0 15px rgba(155, 229, 100, 0.12);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   HIGH-PRECISION PRINT & EXPORT PDF STYLESHEET
+   ══════════════════════════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 15mm 15mm;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide UI chrome, navigation ribbons, filter bars, action buttons, close controls */
+  header.ribbon,
+  .filter-console-strip,
+  .main-rail-header,
+  .sub-h-bar,
+  .blade-close,
+  .btn-c,
+  button,
+  .envpick,
+  .pilot,
+  #ingest-processing-banner,
+  .tile-drill-hint {
+    display: none !important;
+  }
+
+  /* App Shell in print mode */
+  .shell {
+    display: block !important;
+    height: auto !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Full-page printable overlay modal layout */
+  .blade-overlay {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+  }
+
+  .blade-card-lg, .blade-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+  }
+
+  .blade-header {
+    border-bottom: 2px solid #0f172a !important;
+    padding-bottom: 0.5rem !important;
+    margin-bottom: 1rem !important;
+    background: transparent !important;
+  }
+
+  .blade-title {
+    color: #0f172a !important;
+    font-size: 14pt !important;
+    font-weight: 800 !important;
+  }
+
+  /* Expand all scrollable containers & lists for unclipped printing */
+  div[style*="overflow-y:auto"],
+  div[style*="max-height"],
+  .val-grid-2,
+  .comparison-box {
+    max-height: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* High contrast colors for card elements, badges, tables */
+  .val-card, .entity-link-card, .precedent-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 0.75rem !important;
+    padding: 0.6rem !important;
+  }
+
+  div[style*="background:rgba(3,14,23"],
+  div[style*="background:var(--surface)"],
+  div[style*="background:rgba(79,224,232"] {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  * {
+    color: #0f172a !important;
+    text-shadow: none !important;
+  }
+
+  b, strong {
+    color: #020617 !important;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', monospace !important;
+    color: #020617 !important;
+  }
+
+  .risk-badge, .st, .tag-pill {
+    border: 1px solid #64748b !important;
+    color: #0f172a !important;
+    background: #f1f5f9 !important;
+  }
+}
+
 
 
 

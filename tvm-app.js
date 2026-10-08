@@ -4285,6 +4285,16 @@ window.clearConsoleScope = function() {
   renderApp();
 };
 
+window.triggerPrintPdf = function() {
+  const overlay = document.getElementById('blade-overlay');
+  if (!overlay && (state.activeTab === 'contractvalidation' || state.activeTab === 'historicalrepo')) {
+    window.openExecutiveSummary();
+    setTimeout(() => { window.print(); }, 300);
+    return;
+  }
+  window.print();
+};
+
 // ── EXECUTIVE SUMMARY FINDINGS & RECOMMENDATIONS MODAL ──
 window.openExecutiveSummary = function(docIdList) {
   const validations = state.data.validations || [];
@@ -4450,7 +4460,7 @@ Report Link: https://tegrity-tvm-web-uoklz4qdla-uc.a.run.app/?scope=${Array.from
           <button class="btn-c btn-c-sec btn-xs" onclick="navigator.clipboard.writeText(window.location.href); window.showToast('🔗 Executive Report Link copied!')">
             🔗 SHARE REPORT LINK
           </button>
-          <button class="btn-c btn-c-sec btn-xs" onclick="window.print()">
+          <button class="btn-c btn-c-sec btn-xs" onclick="window.triggerPrintPdf()">
             🖨️ PRINT / EXPORT PDF
           </button>
         </div>
