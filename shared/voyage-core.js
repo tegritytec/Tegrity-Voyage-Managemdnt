@@ -70,3 +70,163 @@ export const INSURANCE_POLICIES = [
   { policyId: 'POL-LOH-2026-01', policyNo: 'NHC-LOH-9203', vesselImo: '9200103', vesselName: 'MV Tegrity Pacific', policyType: 'Loss of Hire', insurer: 'Norwegian Hull Club', insuredLimit: '$28,500 / Day (Max 90 Days)', deductible: '14 Days Franchise', expiryDate: '2027-04-15', status: 'Active' },
   { policyId: 'POL-CG-2026-01', policyNo: 'BRIT-CG-9204', vesselImo: '9200105', vesselName: 'MV Tegrity Meridian', policyType: 'Cargo Liability', insurer: 'Britannia P&I Club', insuredLimit: '$50,000,000', deductible: '$20,000', expiryDate: '2027-02-20', status: 'Active' },
 ];
+
+export const CONTRACT_VALIDATIONS = [
+  { id: 'VAL-2026-001', docRef: 'CP-BPVOY4-01 / ADDENDUM-01', docType: 'Voyage Charter Addendum', associatedContractId: 'VC-2026-001', title: 'BPVOY4 Voyage Charter Audit & Rider Addendum', counterparty: 'Shell International Trading', governingLaw: 'English Law', completenessScore: 82, totalClauses: 28, passedClauses: 23, missingClausesCount: 3, conflictingClausesCount: 2, highRiskCount: 2, mediumRiskCount: 2, lowRiskCount: 1, financialExposureUSD: 145000, auditDate: '2026-03-26', status: 'Action Required' },
+  { id: 'VAL-2026-002', docRef: 'TC-2026-001 / TIME-AGMT-02', docType: 'Time Charter Party', associatedContractId: 'TC-2026-001', title: 'Time Charter Agreement MT Tegrity Apex', counterparty: 'Ocean Neptune Chartering Ltd.', governingLaw: 'English Law', completenessScore: 91, totalClauses: 34, passedClauses: 31, missingClausesCount: 1, conflictingClausesCount: 2, highRiskCount: 1, mediumRiskCount: 1, lowRiskCount: 1, financialExposureUSD: 68000, auditDate: '2026-03-24', status: 'Audit Complete' },
+  { id: 'VAL-2026-003', docRef: 'CP-SHELLVOY6-01 / VC-2026-002', docType: 'Voyage Charter Party', associatedContractId: 'VC-2026-002', title: 'SHELLVOY6 Voyage Charter Agreement MV Tegrity Crest', counterparty: 'BP Oil International', governingLaw: 'English Law', completenessScore: 76, totalClauses: 25, passedClauses: 19, missingClausesCount: 4, conflictingClausesCount: 2, highRiskCount: 3, mediumRiskCount: 2, lowRiskCount: 1, financialExposureUSD: 210000, auditDate: '2026-03-21', status: 'Action Required' },
+  { id: 'VAL-2026-004', docRef: 'CP-NYPE93-01 / TC-2026-002', docType: 'Time Charter Party Addendum', associatedContractId: 'TC-2026-002', title: 'NYPE 93 Time Charter Rider & Bunkering Rider', counterparty: 'Pacific Refining & Energy Corp', governingLaw: 'New York Law', completenessScore: 95, totalClauses: 30, passedClauses: 28, missingClausesCount: 1, conflictingClausesCount: 1, highRiskCount: 0, mediumRiskCount: 1, lowRiskCount: 1, financialExposureUSD: 25000, auditDate: '2026-03-25', status: 'Audit Complete' }
+];
+
+export const VALIDATION_AUDIT_LOGS = [
+  {
+    auditId: 'VAL-AUD-001',
+    docId: 'VAL-2026-001',
+    docRef: 'CP-BPVOY4-01 / ADDENDUM-01',
+    clauseRef: 'Clause 42 - EU ETS Carbon Allowance Indemnity',
+    category: 'Environmental Compliance',
+    issueType: 'Missing Required Clause',
+    proposedText: '[Missing] Contract contains no clause specifying liability or mechanism for EU Emissions Trading System (EU ETS) allowance surrenders during EU port calls.',
+    tegrityRecommendation: 'Incorporate BIMCO EU ETS Allowance Clause 2023: Charterers shall surrender to Owners required EU Allowances (EUAs) within 10 days of monthly verified emission statement for all EU voyage legs.',
+    riskLevel: 'High',
+    riskSummary: 'Potential unrecoverable EUA cost exposure estimated at $85,000 per voyage under MARPOL / EU Directive 2023/959.',
+    financialExposureUSD: 85000,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Recommendation accepted by Commercial Ops on 2026-03-26. Rider Clause RC-002 added.',
+    referencePrecedent: 'BIMCO EU ETS Allowance Clause 2023 / EU Directive 2023/959'
+  },
+  {
+    auditId: 'VAL-AUD-002',
+    docId: 'VAL-2026-001',
+    docRef: 'CP-BPVOY4-01 / ADDENDUM-01',
+    clauseRef: 'Clause 16 - Laytime Weather Hold & Exception',
+    category: 'Laytime & Demurrage',
+    issueType: 'Conflicting Terms',
+    proposedText: 'Proposed Rider 3 states laytime runs continuously including rain/bad weather holds unless port is officially closed by Harbour Master.',
+    tegrityRecommendation: 'Align with standard BPVOY4 Clause 16: Laytime shall be suspended during periods where weather prevents safe loading/discharge operations, provided Master records deck log entry & shore countersignature.',
+    riskLevel: 'High',
+    riskSummary: 'Conflict between printed BPVOY4 and Rider 3 exposes Owner to 60 hrs uncompensated demurrage dispute.',
+    financialExposureUSD: 60000,
+    actionTaken: 'MODIFIED',
+    actionNotes: 'Modified wording agreed with Charterer: Weather holds apply if wind exceeds 30 knots or wave height > 2.5m.',
+    referencePrecedent: 'BPVOY4 Clause 16 / LMAA Arbitration Award 2024/12'
+  },
+  {
+    auditId: 'VAL-AUD-003',
+    docId: 'VAL-2026-003',
+    docRef: 'CP-SHELLVOY6-01 / VC-2026-002',
+    clauseRef: 'Clause 12 - War Risk & Red Sea Transit Indemnity',
+    category: 'Sanctions & War Risks',
+    issueType: 'Ambiguous Wording',
+    proposedText: 'Vessel shall proceed on charterers customary route including southern passages.',
+    tegrityRecommendation: 'Insert BIMCO Red Sea Transit Clause 2023: Owners/Master retain absolute discretion to refuse transit of Bab el-Mandeb / Red Sea if security threat persists. Charterers pay 100% of Additional War Risk Premiums (AWRP) and Cape route diversion hire.',
+    riskLevel: 'High',
+    riskSummary: 'Ambiguity exposes Owner to vessel detention, uninsured war risks, and charter cancellation disputes.',
+    financialExposureUSD: 150000,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Accepted and executed as Rider Clause RC-003.',
+    referencePrecedent: 'BIMCO War Risk / Red Sea Transit Clause 2023'
+  },
+  {
+    auditId: 'VAL-AUD-004',
+    docId: 'VAL-2026-003',
+    docRef: 'CP-SHELLVOY6-01 / VC-2026-002',
+    clauseRef: 'Clause 24 - Pumping Warranty & Manifold Pressure',
+    category: 'Cargo & Operational',
+    issueType: 'Conflicting Terms',
+    proposedText: 'Vessel warrants 24 hours total discharge time regardless of shore line backpressure.',
+    tegrityRecommendation: 'Amend Pumping Warranty: Vessel warrants discharge within 24 hours OR maintaining 7.0 bar backpressure at ship manifold, provided shore line backpressure does not exceed 5.0 bar.',
+    riskLevel: 'Medium',
+    riskSummary: 'Shore terminal receipt restrictions could trigger unfair demurrage deductions of $38,500/day.',
+    financialExposureUSD: 60000,
+    actionTaken: 'DEFERRED',
+    actionNotes: 'Under review by Legal Counsel.',
+    referencePrecedent: 'SHELLVOY6 Clause 24 / BIMCO Pumping Warranty Precedent'
+  },
+  {
+    auditId: 'VAL-AUD-005',
+    docId: 'VAL-2026-002',
+    docRef: 'TC-2026-001 / TIME-AGMT-02',
+    clauseRef: 'Clause 8 - Performance & Hull Fouling Idle Period',
+    category: 'Bunkers & Performance',
+    issueType: 'Missing Required Clause',
+    proposedText: '[Missing] No provision for performance warranty suspension during extended tropical anchorage idleness.',
+    tegrityRecommendation: 'Insert BIMCO Hull Fouling Clause 2019: If vessel remains idle at Charterers request in tropical waters (>28°C) for >14 days, performance warranties are suspended until underwater hull inspection/cleaning at Charterers expense.',
+    riskLevel: 'Medium',
+    riskSummary: 'Unjust speed/consumption underperformance claims up to $45,000 following tropical waiting times.',
+    financialExposureUSD: 45000,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Accepted and added as Rider Clause RC-005.',
+    referencePrecedent: 'BIMCO Hull Fouling Clause 2019'
+  },
+  {
+    auditId: 'VAL-AUD-006',
+    docId: 'VAL-2026-004',
+    docRef: 'CP-NYPE93-01 / TC-2026-002',
+    clauseRef: 'Clause 31 - MARPOL Annex VI Fuel Sulfur & Scrubber Non-Compliance',
+    category: 'Environmental Compliance',
+    issueType: 'Ambiguous Wording',
+    proposedText: 'Bunkers supplied shall comply with ISO 8217 standard.',
+    tegrityRecommendation: 'Incorporate BIMCO 2020 Fuel Sulfur Content Clause: Charterers warrant all supplied fuel conforms strictly to MARPOL Annex VI (<0.50% S / <0.10% S in ECA) and ISO 8217:2017 RMG 380 specifications with BDN sampling retained on board.',
+    riskLevel: 'Low',
+    riskSummary: 'Minor regulatory risk regarding fuel sample retention and port state control audit trails.',
+    financialExposureUSD: 25000,
+    actionTaken: 'ACCEPTED',
+    actionNotes: 'Accepted by Charterer.',
+    referencePrecedent: 'MARPOL Annex VI Reg 14 / BIMCO 2020 Fuel Sulfur Clause'
+  }
+];
+
+export const CLAUSE_RESEARCH_DB = [
+  {
+    refId: 'RES-001',
+    title: 'BIMCO EU ETS Carbon Allowance Clause 2023',
+    source: 'BIMCO',
+    category: 'Environmental Compliance',
+    summaryText: 'Establishes clear indemnity framework for EU Emissions Trading System (EU ETS). Charterers are contractually bound to surrender EUAs corresponding to verified emissions within 10 days of monthly reporting.',
+    sampleClauseText: 'Charterers shall provide Owners with a quantity of allowances equal to the emissions footprint of the Vessel attributable to the charter period. Allowance transfers shall occur monthly within 10 calendar days of notification.',
+    impactRating: 'Critical Governance',
+    tags: ['ets', 'emissions', 'carbon', 'eua', 'bimco', 'eu']
+  },
+  {
+    refId: 'RES-002',
+    title: 'BIMCO Red Sea & War Risk Transit Clause 2023',
+    source: 'BIMCO',
+    category: 'Sanctions & War Risks',
+    summaryText: 'Protects vessel owners and crew when navigating high-risk war zones or conflict areas such as the Red Sea / Bab el-Mandeb. Master retains non-negotiable right to re-route via Cape of Good Hope with all AWRP and extra distance hire paid by Charterers.',
+    sampleClauseText: 'If in the reasonable judgment of the Master or Owners the transit of any canal or strait exposes the Vessel, crew or cargo to War Risks, Owners may order the Vessel to proceed via alternative route. All additional hire and fuel shall be for Charterers account.',
+    impactRating: 'High Risk Prevention',
+    tags: ['war', 'red sea', 'transit', 'awrp', 'routing', 'master']
+  },
+  {
+    refId: 'RES-003',
+    title: 'BPVOY4 Laytime & Weather Exception Precedents',
+    source: 'LMAA Precedent',
+    category: 'Laytime & Demurrage',
+    summaryText: 'London Maritime Arbitrators Association (LMAA) landmark ruling on BPVOY4 Clause 16. Confirms laytime weather exceptions require simultaneous deck log recordings and shore notice contemporaneously rendered during storm events.',
+    sampleClauseText: 'Laytime or time on demurrage shall cease to count only for the actual duration of weather interruptions where physical cargo transfer is rendered unsafe, provided contemporaneous entries are documented in the Vessel deck logbook.',
+    impactRating: 'Standard Best Practice',
+    tags: ['laytime', 'demurrage', 'bpvoy4', 'weather', 'lmaa', 'arbitration']
+  },
+  {
+    refId: 'RES-004',
+    title: 'MARPOL Annex VI Carbon Intensity Indicator (CII) Clause 2022',
+    source: 'IMO MARPOL',
+    category: 'Environmental Compliance',
+    summaryText: 'IMO regulation guidelines requiring charterers to operate vessel in a manner that maintains operational efficiency within target CII rating (A, B, or C). Avoids charterer speed orders that drop vessel to D or E ratings.',
+    sampleClauseText: 'Charterers shall not give operational orders, routing instructions, or speed requirements that would result in the Vessel failing to achieve the Agreed Annual CII Target Rating.',
+    impactRating: 'Critical Governance',
+    tags: ['marpol', 'cii', 'carbon', 'imo', 'speed', 'emissions']
+  },
+  {
+    refId: 'RES-005',
+    title: 'SHELLVOY6 Pumping Warranty & Shore Manifold Backpressure Precedent',
+    source: 'Shellvoy Guidelines',
+    category: 'Cargo & Operational',
+    summaryText: 'Arbitration award clarifying pumping warranty compliance. Owners warrant discharge within 24 hours OR maintaining 7 bar pressure at ship rail, provided shore facility receiving line pressure does not exceed 4.5 bar.',
+    sampleClauseText: 'Vessel pumping warranty is satisfied if 7.0 bar pressure is maintained at manifold, notwithstanding shore facility receiving delays or high shore line backpressure.',
+    impactRating: 'Standard Best Practice',
+    tags: ['pumping', 'manifold', 'shellvoy', 'discharge', 'backpressure']
+  }
+];
+

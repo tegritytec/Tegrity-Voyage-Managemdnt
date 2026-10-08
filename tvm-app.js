@@ -14,7 +14,10 @@ import {
   VOYAGE_CONTRACTS,
   RIDER_CLAUSES,
   MASTER_INSTRUCTIONS,
-  INSURANCE_POLICIES
+  INSURANCE_POLICIES,
+  CONTRACT_VALIDATIONS,
+  VALIDATION_AUDIT_LOGS,
+  CLAUSE_RESEARCH_DB
 } from './shared/voyage-core.js';
 
 const STORAGE_KEYS = {
@@ -26,7 +29,10 @@ const STORAGE_KEYS = {
   vcs: 'tvm_voyage_contracts',
   riders: 'tvm_rider_clauses',
   masters: 'tvm_master_instructions',
-  insurance: 'tvm_insurance_policies'
+  insurance: 'tvm_insurance_policies',
+  validations: 'tvm_contract_validations',
+  auditLogs: 'tvm_validation_audit_logs',
+  researchDb: 'tvm_clause_research_db'
 };
 
 function loadState(key, fallback) {
@@ -43,6 +49,7 @@ export const state = {
   activeRole: 'all',
   activeTheme: 'signal',
   selectedEntity: null, // { category: 'vessels' | 'masters' | ..., id: '...' }
+  selectedValidationDocId: 'ALL',
   filters: {
     org: 'ALL',
     fleetType: 'ALL',
@@ -60,7 +67,10 @@ export const state = {
     vcs: loadState(STORAGE_KEYS.vcs, VOYAGE_CONTRACTS),
     riders: loadState(STORAGE_KEYS.riders, RIDER_CLAUSES),
     masters: loadState(STORAGE_KEYS.masters, MASTER_INSTRUCTIONS),
-    insurance: loadState(STORAGE_KEYS.insurance, INSURANCE_POLICIES)
+    insurance: loadState(STORAGE_KEYS.insurance, INSURANCE_POLICIES),
+    validations: loadState(STORAGE_KEYS.validations, CONTRACT_VALIDATIONS),
+    auditLogs: loadState(STORAGE_KEYS.auditLogs, VALIDATION_AUDIT_LOGS),
+    researchDb: loadState(STORAGE_KEYS.researchDb, CLAUSE_RESEARCH_DB)
   }
 };
 
@@ -115,6 +125,8 @@ function getPkKey(cat) {
     case 'riders': return 'clauseId';
     case 'masters': return 'instructionId';
     case 'insurance': return 'policyId';
+    case 'validations': return 'id';
+    case 'auditLogs': return 'auditId';
     default: return 'id';
   }
 }
@@ -227,6 +239,24 @@ export function getFilteredData() {
     return true;
   });
 
+  // 10. Filter Contract Validations
+  const filteredValidations = (state.data.validations || []).filter(v => {
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
+      if (v.associatedContractId !== f.contract) return false;
+    }
+    return true;
+  });
+
+  const validDocIds = new Set(filteredValidations.map(v => v.id));
+
+  // 11. Filter Audit Logs
+  const filteredAuditLogs = (state.data.auditLogs || []).filter(a => {
+    if (f.contract !== 'ALL' && f.contract !== 'TC_ONLY' && f.contract !== 'VC_ONLY') {
+      if (!validDocIds.has(a.docId)) return false;
+    }
+    return true;
+  });
+
   return {
     orgs: filteredOrgs,
     fleets: filteredFleets,
@@ -236,7 +266,10 @@ export function getFilteredData() {
     vcs: filteredVCs,
     riders: filteredRiders,
     masters: filteredMasters,
-    insurance: filteredInsurance
+    insurance: filteredInsurance,
+    validations: filteredValidations,
+    auditLogs: filteredAuditLogs,
+    researchDb: state.data.researchDb || []
   };
 }
 
@@ -453,6 +486,79 @@ function renderSummaryStats(filtered) {
   const readoutTotal = document.getElementById('readout-total-scoped');
   const railCount = document.getElementById('rail-count');
 
+  if (state.activeTab === 'contractvalidation') {
+    const vals = filtered.validations || state.data.validations || [];
+    const audits = filtered.auditLogs || state.data.auditLogs || [];
+    const avgScore = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + (b.completenessScore || 0), 0) / vals.length) : 0;
+    const highRisks = audits.filter(a => a.riskLevel === 'High').length;
+    const totalExp = audits.reduce((a, b) => a + (b.financialExposureUSD || 0), 0);
+    const acceptedCount = audits.filter(a => a.actionTaken === 'ACCEPTED' || a.actionTaken === 'MODIFIED').length;
+    const adoptPct = audits.length > 0 ? Math.round((acceptedCount / audits.length) * 100) : 0;
+
+    if (readoutTotal) readoutTotal.textContent = vals.length;
+    if (railCount) railCount.textContent = `5 VALIDATION METRIC TILES ACTIVE`;
+
+    if (statsContainer) {
+      statsContainer.innerHTML = `
+        <div class="tile">
+          <div class="t-top">
+            <div class="t-ico">🔍</div>
+            <span class="pip ok">DOCS</span>
+          </div>
+          <div class="t-big">${vals.length}</div>
+          <div class="t-lab">AUDITED CONTRACTS</div>
+          <div class="t-sub">${vals.length} Addendums & Agreements</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        </div>
+
+        <div class="tile">
+          <div class="t-top">
+            <div class="t-ico">📊</div>
+            <span class="pip live">INDEX</span>
+          </div>
+          <div class="t-big">${avgScore}%</div>
+          <div class="t-lab">COMPLETENESS INDEX</div>
+          <div class="t-sub">Average Audit Compliance</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        </div>
+
+        <div class="tile">
+          <div class="t-top">
+            <div class="t-ico">⚠️</div>
+            <span class="pip warn">GAPS</span>
+          </div>
+          <div class="t-big">${highRisks}</div>
+          <div class="t-lab">HIGH RISK GAPS</div>
+          <div class="t-sub">${audits.length} Total Line Item Audits</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+        </div>
+
+        <div class="tile">
+          <div class="t-top">
+            <div class="t-ico">💰</div>
+            <span class="pip warn">EXPOSURE</span>
+          </div>
+          <div class="t-big">$${(totalExp / 1000).toFixed(0)}k</div>
+          <div class="t-lab">FINANCIAL RISK</div>
+          <div class="t-sub">Unhedged Liability Risk</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i></i></div>
+        </div>
+
+        <div class="tile">
+          <div class="t-top">
+            <div class="t-ico">⚡</div>
+            <span class="pip ok">AI RECS</span>
+          </div>
+          <div class="t-big">${adoptPct}%</div>
+          <div class="t-lab">RECS ADOPTED</div>
+          <div class="t-sub">${acceptedCount} of ${audits.length} Accepted/Modified</div>
+          <div class="t-strip"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        </div>
+      `;
+    }
+    return;
+  }
+
   const totalScoped = filtered.orgs.length + filtered.vessels.length + filtered.tcs.length + filtered.vcs.length + filtered.insurance.length;
   if (readoutTotal) readoutTotal.textContent = totalScoped;
   if (railCount) railCount.textContent = `5 METRIC TILES ACTIVE`;
@@ -531,6 +637,7 @@ function renderActiveView(filtered) {
     case 'riderclauses': viewPane.innerHTML = renderRiderView(filtered.riders); break;
     case 'masterinstructions': viewPane.innerHTML = renderMasterView(filtered.masters); break;
     case 'insurance': viewPane.innerHTML = renderInsuranceView(filtered.insurance); break;
+    case 'contractvalidation': viewPane.innerHTML = renderContractValidationView(filtered); break;
     default: viewPane.innerHTML = renderOrgView(filtered.orgs);
   }
 }
@@ -957,6 +1064,216 @@ function renderInsuranceView(insurance) {
   `;
 }
 
+// ── 10. CONTRACT VALIDATION MODULE ──
+function renderContractValidationView(filtered) {
+  const validations = filtered.validations || state.data.validations || [];
+  const auditLogs = filtered.auditLogs || state.data.auditLogs || [];
+  const researchDb = filtered.researchDb || state.data.researchDb || [];
+
+  const selectedDocId = state.selectedValidationDocId || 'ALL';
+  const displayAuditLogs = selectedDocId === 'ALL' 
+    ? auditLogs 
+    : auditLogs.filter(a => a.docId === selectedDocId);
+
+  return `
+    <div class="dwrap">
+      <!-- SUB-HEADER BAR -->
+      <div class="sub-h-bar">
+        <div>
+          <div class="sub-h-title">🔍 Contract Validation & Verification Engine</div>
+          <div class="sub-h-sub">Verifying completeness, identifying missing/conflicting clauses & recommending corrections based on BIMCO, MARPOL & LMAA governance</div>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn-c btn-c-primary btn-sm" onclick="window.reAuditContracts()">⚡ RE-AUDIT ALL CONTRACT DOCUMENTS</button>
+        </div>
+      </div>
+
+      <!-- SECTION 1: CONTRACT COMPLETENESS & VERIFICATION MATRIX -->
+      <div style="margin-bottom:1.5rem">
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;gap:6px">
+          <span>📊</span> CONTRACT COMPLETENESS & RISK AUDIT MATRIX (${validations.length} DOCS AUDITED)
+        </div>
+        <div class="val-grid-2">
+          ${validations.map(v => {
+            const isSelected = selectedDocId === v.id;
+            const fillClass = v.completenessScore >= 90 ? 'high' : v.completenessScore >= 80 ? 'med' : 'low';
+            return `
+              <div class="val-card ${isSelected ? 'row-selected' : ''}" style="${isSelected ? 'border-color:var(--signal);box-shadow:0 0 10px var(--signal-glow);' : ''}">
+                <div class="val-card-header">
+                  <div>
+                    <span class="mono" style="font-size:0.72rem;color:var(--signal);font-weight:600">${v.docRef}</span>
+                    <h4 style="font-size:0.85rem;color:var(--ink);margin:2px 0">${v.title}</h4>
+                    <span style="font-size:0.7rem;color:var(--ink-3)">Counterparty: <b>${v.counterparty}</b> · Law: <b>${v.governingLaw}</b></span>
+                  </div>
+                  <span class="st ${v.status === 'Audit Complete' ? 'good' : 'warn'}">${v.status}</span>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.72rem;margin-top:0.3rem">
+                  <span>Completeness Index: <b style="color:var(--ink)">${v.completenessScore}%</b></span>
+                  <span class="mono" style="color:var(--cyan)">${v.passedClauses} / ${v.totalClauses} Clauses Verified</span>
+                </div>
+
+                <div class="val-progress-bar">
+                  <div class="val-progress-fill ${fillClass}" style="width: ${v.completenessScore}%"></div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem">
+                  <div style="display:flex;gap:6px">
+                    <span class="risk-badge risk-badge-high">${v.highRiskCount} High Risk</span>
+                    <span class="risk-badge risk-badge-med">${v.mediumRiskCount} Med Risk</span>
+                    <span class="risk-badge risk-badge-low">${v.lowRiskCount} Low Risk</span>
+                  </div>
+                  <div style="text-align:right">
+                    <span style="font-size:0.68rem;color:var(--ink-3)">Financial Risk:</span>
+                    <b class="mono" style="color:var(--rose);margin-left:4px">$${(v.financialExposureUSD || 0).toLocaleString()}</b>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem">
+                  <button class="btn-c btn-c-sec btn-xs" onclick="window.selectEntity('validations', '${v.id}')">Inspect Record</button>
+                  <button class="btn-c ${isSelected ? 'btn-c-primary' : 'btn-c-sec'} btn-xs" onclick="window.filterValidationByDoc('${isSelected ? 'ALL' : v.id}')">
+                    ${isSelected ? 'Showing Filtered Line Items (Click to Reset)' : '🔍 Scope Clause Line Items'}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- SECTION 2: CLAUSE AUDIT LOGS, PROPOSED VS TEGRITY RECS & ACTION TAKEN MATRIX -->
+      <div style="margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
+          <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px">
+            <span>📋</span> CLAUSE VERIFICATION, PROPOSED VS TEGRITY RECOMMENDATIONS & ACTION LOGS (${displayAuditLogs.length} ITEMS)
+          </div>
+          ${selectedDocId !== 'ALL' ? `<button class="btn-c btn-c-sec btn-xs" onclick="window.filterValidationByDoc('ALL')">Show All Documents</button>` : ''}
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem">
+          ${displayAuditLogs.map(item => {
+            const riskClass = item.riskLevel === 'High' ? 'risk-badge-high' : item.riskLevel === 'Medium' ? 'risk-badge-med' : 'risk-badge-low';
+            const actionClass = item.actionTaken === 'ACCEPTED' ? 'action-badge-accepted' : item.actionTaken === 'MODIFIED' ? 'action-badge-modified' : item.actionTaken === 'DEFERRED' ? 'action-badge-deferred' : 'action-badge-rejected';
+            
+            return `
+              <div class="val-card" style="border-left:4px solid ${item.riskLevel === 'High' ? 'var(--rose)' : item.riskLevel === 'Medium' ? 'var(--amber)' : 'var(--good)'}">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.5rem">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                      <span class="mono" style="font-size:0.7rem;color:var(--signal);font-weight:600">${item.docRef}</span>
+                      <span style="font-size:0.68rem;color:var(--ink-3)">·</span>
+                      <span style="font-size:0.75rem;font-weight:700;color:var(--ink)">${item.clauseRef}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:0.7rem">
+                      <span class="st info" style="font-size:0.62rem">${item.category}</span>
+                      <span style="color:var(--rose);font-weight:600">${item.issueType}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="risk-badge ${riskClass}">${item.riskLevel} RISK</span>
+                    <span class="mono" style="font-size:0.75rem;color:var(--rose);font-weight:700">$${(item.financialExposureUSD || 0).toLocaleString()} EXPOSURE</span>
+                  </div>
+                </div>
+
+                <!-- RISK SUMMARY -->
+                <div style="font-size:0.73rem;color:var(--ink-2);background:rgba(3,14,23,0.4);padding:0.4rem 0.6rem;border-radius:3px;margin-bottom:0.6rem">
+                  ⚠️ <b>Risk Assessment:</b> ${item.riskSummary}
+                </div>
+
+                <!-- COMPARISON: PROPOSED/CONTRACTED VS TEGRITY AI RECOMMENDATION -->
+                <div class="comparison-box">
+                  <div class="comp-col">
+                    <label>📄 Proposed / Contracted Clause Wording</label>
+                    <div class="comp-text-proposed">${item.proposedText}</div>
+                  </div>
+                  <div class="comp-col">
+                    <label>⚡ Tegrity AI Recommendation & Industry Standard</label>
+                    <div class="comp-text-recommended">${item.tegrityRecommendation}</div>
+                  </div>
+                </div>
+
+                <!-- ACTION TAKEN & RECOMMENDATION ENGINE CONTROLS -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--edge);font-size:0.72rem;flex-wrap:wrap;gap:0.5rem">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--ink-3)">Action Status:</span>
+                    <span class="action-badge ${actionClass}">${item.actionTaken}</span>
+                    <span style="color:var(--ink-3);font-size:0.68rem;margin-left:4px">${item.actionNotes || ''}</span>
+                  </div>
+
+                  <!-- 1-CLICK ACTION BUTTONS -->
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-c btn-c-primary btn-xs" style="padding:2px 8px" onclick="window.acceptValidationRec('${item.auditId}')" title="Accept Tegrity AI Recommendation">✔ ACCEPT</button>
+                    <button class="btn-c btn-c-sec btn-xs" style="padding:2px 8px" onclick="window.modifyValidationRec('${item.auditId}')" title="Modify & Custom Wording">✏️ MODIFY</button>
+                    <button class="btn-c btn-c-sec btn-xs" style="padding:2px 8px" onclick="window.deferValidationRec('${item.auditId}')" title="Defer for Legal Review">⏸ DEFER</button>
+                    <button class="btn-c btn-c-rose btn-xs" style="padding:2px 8px" onclick="window.rejectValidationRec('${item.auditId}')" title="Reject Recommendation">✕ REJECT</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:0.4rem;font-size:0.66rem;color:var(--ink-3);display:flex;align-items:center;gap:4px">
+                  <span>Reference Legal Precedent:</span>
+                  <span class="mono" style="color:var(--cyan)">${item.referencePrecedent}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- SECTION 3: NLP MARITIME LEGAL PRECEDENT & GOVERNANCE RESEARCH ENGINE -->
+      <div>
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;gap:6px">
+          <span>🧠</span> NLP MARITIME LEGAL RESEARCH ENGINE & CREDIBLE GOVERNANCE REFERENCES
+        </div>
+
+        <div class="nlp-search-box">
+          <span>🔎</span>
+          <input type="text" id="nlp-research-query" class="nlp-search-input" placeholder="Query legal precedents (e.g. EU ETS, Red Sea, Laytime, MARPOL, Speed & Consumption)..." onkeyup="window.filterNlpResearch(this.value)">
+          <div style="display:flex;gap:4px">
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('ets')">EU ETS</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('red sea')">War Risk</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('laytime')">Laytime</button>
+            <button class="btn-c btn-c-sec btn-xs" onclick="window.quickNlpSearch('marpol')">MARPOL</button>
+          </div>
+        </div>
+
+        <div id="nlp-results-container">
+          ${renderNlpPrecedentsHtml(researchDb)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderNlpPrecedentsHtml(items) {
+  if (!items || items.length === 0) {
+    return `<div style="text-align:center;padding:1.5rem;color:var(--ink-3);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r)">No legal precedents found matching search query.</div>`;
+  }
+
+  return items.map(p => `
+    <div class="precedent-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+        <div>
+          <span class="mono" style="font-size:0.68rem;color:var(--cyan);font-weight:600">${p.refId} · ${p.source}</span>
+          <h4 style="font-size:0.85rem;color:var(--ink);margin:2px 0">${p.title}</h4>
+        </div>
+        <span class="st ${p.impactRating === 'Critical Governance' ? 'rose' : p.impactRating === 'High Risk Prevention' ? 'warn' : 'good'}">${p.impactRating}</span>
+      </div>
+
+      <div style="font-size:0.73rem;color:var(--ink-2);margin-bottom:0.5rem">
+        ${p.summaryText}
+      </div>
+
+      <div style="font-family:'IBM Plex Sans';font-size:0.72rem;color:var(--ink);background:rgba(3,14,23,0.6);border-left:2px solid var(--cyan);padding:0.45rem 0.6rem;border-radius:3px;margin-bottom:0.5rem">
+        <b>Sample Recommended Standard Wording:</b> "${p.sampleClauseText}"
+      </div>
+
+      <div>
+        ${(p.tags || []).map(t => `<span class="tag-pill">#${t}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // BOTTOM SCREEN SECTION: EDITABLE DETAILED DATA INSPECTOR ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -977,7 +1294,8 @@ export function renderInspectorPane(filtered) {
     voyagecontracts: 'vcs',
     riderclauses: 'riders',
     masterinstructions: 'masters',
-    insurance: 'insurance'
+    insurance: 'insurance',
+    contractvalidation: 'validations'
   };
 
   const currentTabCat = tabCategoryMap[state.activeTab] || 'vessels';
@@ -1511,6 +1829,71 @@ function getInspectorHtml(category, id, item) {
         <div class="inspector-field full">
           <label class="inspector-label">Detailed Scope of Insurance Coverage</label>
           <textarea class="inspector-textarea" data-field="coverageDetails" rows="3">${defaultCov}</textarea>
+        </div>
+      `;
+      break;
+    }
+
+    case 'validations': {
+      icon = '🔍';
+      titleText = `Contract Validation & Verification Audit Profile : ${item.docRef}`;
+      fieldsHtml = `
+        <div class="inspector-sec-head">📌 Section 1: Document Reference & Governance</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Audit ID</label>
+          <input class="inspector-input mono" value="${item.id}" readonly>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Document Reference</label>
+          <input class="inspector-input mono" data-field="docRef" value="${item.docRef || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Document Type</label>
+          <select class="inspector-select" data-field="docType">
+            <option ${item.docType === 'Voyage Charter Addendum' ? 'selected' : ''}>Voyage Charter Addendum</option>
+            <option ${item.docType === 'Time Charter Party' ? 'selected' : ''}>Time Charter Party</option>
+            <option ${item.docType === 'Voyage Charter Party' ? 'selected' : ''}>Voyage Charter Party</option>
+            <option ${item.docType === 'Time Charter Party Addendum' ? 'selected' : ''}>Time Charter Party Addendum</option>
+            <option ${item.docType === 'Bareboat Agreement' ? 'selected' : ''}>Bareboat Agreement</option>
+          </select>
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Contract Document Title</label>
+          <input class="inspector-input" data-field="title" value="${item.title || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Counterparty</label>
+          <input class="inspector-input" data-field="counterparty" value="${item.counterparty || ''}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Governing Jurisdiction</label>
+          <input class="inspector-input" data-field="governingLaw" value="${item.governingLaw || 'English Law'}">
+        </div>
+
+        <div class="inspector-sec-head">📊 Section 2: Audit Completeness & Risk Metrics</div>
+        <div class="inspector-field">
+          <label class="inspector-label">Completeness Score (%)</label>
+          <input class="inspector-input mono" type="number" data-field="completenessScore" value="${item.completenessScore || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Total Clauses Audited</label>
+          <input class="inspector-input mono" type="number" data-field="totalClauses" value="${item.totalClauses || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">High Risk Clause Count</label>
+          <input class="inspector-input mono" type="number" data-field="highRiskCount" value="${item.highRiskCount || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Financial Risk Exposure (USD $)</label>
+          <input class="inspector-input mono" type="number" data-field="financialExposureUSD" value="${item.financialExposureUSD || 0}">
+        </div>
+        <div class="inspector-field">
+          <label class="inspector-label">Audit Status</label>
+          <select class="inspector-select" data-field="status">
+            <option ${item.status === 'Audit Complete' ? 'selected' : ''}>Audit Complete</option>
+            <option ${item.status === 'Action Required' ? 'selected' : ''}>Action Required</option>
+            <option ${item.status === 'In Review' ? 'selected' : ''}>In Review</option>
+          </select>
         </div>
       `;
       break;
@@ -2228,6 +2611,130 @@ window.openInsuranceModal = function(id = null) {
     }
     saveState('insurance');
   });
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTRACT VALIDATION INTERACTIVE HANDLERS & RECS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+window.acceptValidationRec = function(auditId) {
+  const item = state.data.auditLogs.find(a => a.auditId === auditId);
+  if (!item) return;
+  item.actionTaken = 'ACCEPTED';
+  item.actionNotes = `Accepted on ${new Date().toISOString().split('T')[0]}. Repositories updated.`;
+  
+  const doc = state.data.validations.find(v => v.id === item.docId);
+  if (doc) {
+    doc.completenessScore = Math.min(100, doc.completenessScore + 5);
+    if (item.riskLevel === 'High' && doc.highRiskCount > 0) doc.highRiskCount--;
+    doc.financialExposureUSD = Math.max(0, doc.financialExposureUSD - item.financialExposureUSD);
+  }
+
+  saveState('auditLogs');
+  saveState('validations');
+  window.showToast('✔ Tegrity AI Recommendation ACCEPTED! Contract repository enriched.');
+  renderApp();
+};
+
+window.modifyValidationRec = function(auditId) {
+  const item = state.data.auditLogs.find(a => a.auditId === auditId);
+  if (!item) return;
+  const custom = prompt('Enter custom modified clause wording:', item.tegrityRecommendation);
+  if (custom !== null && custom.trim() !== '') {
+    item.actionTaken = 'MODIFIED';
+    item.actionNotes = `Modified by Chartering Ops: "${custom.trim()}"`;
+    item.tegrityRecommendation = custom.trim();
+
+    const doc = state.data.validations.find(v => v.id === item.docId);
+    if (doc) {
+      doc.completenessScore = Math.min(100, doc.completenessScore + 3);
+    }
+
+    saveState('auditLogs');
+    saveState('validations');
+    window.showToast('✏️ Modified clause saved and recorded in repository.');
+    renderApp();
+  }
+};
+
+window.deferValidationRec = function(auditId) {
+  const item = state.data.auditLogs.find(a => a.auditId === auditId);
+  if (!item) return;
+  item.actionTaken = 'DEFERRED';
+  item.actionNotes = 'Deferred for Senior Legal Counsel review.';
+  saveState('auditLogs');
+  window.showToast('⏸ Recommendation deferred.');
+  renderApp();
+};
+
+window.rejectValidationRec = function(auditId) {
+  const item = state.data.auditLogs.find(a => a.auditId === auditId);
+  if (!item) return;
+  item.actionTaken = 'REJECTED';
+  item.actionNotes = 'Rejected by commercial ops team.';
+  saveState('auditLogs');
+  window.showToast('✕ Recommendation rejected.');
+  renderApp();
+};
+
+window.reAuditContracts = function() {
+  window.showToast('⚡ Re-running AI Contract Completeness Audit... Verification complete!');
+  renderApp();
+};
+
+window.filterValidationByDoc = function(docId) {
+  state.selectedValidationDocId = docId;
+  renderApp();
+};
+
+window.filterNlpResearch = function(query) {
+  const container = document.getElementById('nlp-results-container');
+  if (!container) return;
+  const q = (query || '').toLowerCase().trim();
+  const db = state.data.researchDb || [];
+  const filtered = !q ? db : db.filter(item => {
+    return item.title.toLowerCase().includes(q) ||
+           item.source.toLowerCase().includes(q) ||
+           item.summaryText.toLowerCase().includes(q) ||
+           item.sampleClauseText.toLowerCase().includes(q) ||
+           (item.tags && item.tags.some(t => t.toLowerCase().includes(q)));
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--ink-3);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r)">No legal precedents found matching search query.</div>`;
+  } else {
+    container.innerHTML = filtered.map(p => `
+      <div class="precedent-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+          <div>
+            <span class="mono" style="font-size:0.68rem;color:var(--cyan);font-weight:600">${p.refId} · ${p.source}</span>
+            <h4 style="font-size:0.85rem;color:var(--ink);margin:2px 0">${p.title}</h4>
+          </div>
+          <span class="st ${p.impactRating === 'Critical Governance' ? 'rose' : p.impactRating === 'High Risk Prevention' ? 'warn' : 'good'}">${p.impactRating}</span>
+        </div>
+
+        <div style="font-size:0.73rem;color:var(--ink-2);margin-bottom:0.5rem">
+          ${p.summaryText}
+        </div>
+
+        <div style="font-family:'IBM Plex Sans';font-size:0.72rem;color:var(--ink);background:rgba(3,14,23,0.6);border-left:2px solid var(--cyan);padding:0.45rem 0.6rem;border-radius:3px;margin-bottom:0.5rem">
+          <b>Sample Recommended Standard Wording:</b> "${p.sampleClauseText}"
+        </div>
+
+        <div>
+          ${(p.tags || []).map(t => `<span class="tag-pill">#${t}</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+};
+
+window.quickNlpSearch = function(keyword) {
+  const input = document.getElementById('nlp-research-query');
+  if (input) {
+    input.value = keyword;
+    window.filterNlpResearch(keyword);
+  }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
