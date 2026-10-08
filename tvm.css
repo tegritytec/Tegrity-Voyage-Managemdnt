@@ -1142,5 +1142,89 @@ table.dtable tbody tr.row-selected td {
   margin-right: 4px;
 }
 
+/* ── DOCUMENT INGESTION PIPELINE STYLES ──────────────────────────── */
+.ingest-box-container {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ingest-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--edge);
+  padding-bottom: 0.5rem;
+}
+
+.ingest-tab-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ingest-tab-btn:hover {
+  border-color: var(--edge-hi);
+  color: var(--ink);
+}
+
+.ingest-tab-btn.active {
+  background: rgba(155, 229, 100, 0.14);
+  color: var(--signal);
+  border-color: var(--signal);
+  box-shadow: 0 0 6px rgba(155, 229, 100, 0.25);
+}
+
+.ingest-dropzone {
+  border: 2px dashed var(--edge-hi);
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.ingest-dropzone:hover,
+.ingest-dropzone.dragover {
+  border-color: var(--signal);
+  background: rgba(155, 229, 100, 0.08);
+  box-shadow: 0 0 15px var(--signal-glow);
+}
+
+.ingest-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.ingest-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
+}
+
+.ingest-desc {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}
+
+.ingest-progress-box {
+  background: var(--abyss);
+  border: 1px solid var(--signal);
+  border-radius: var(--r);
+  padding: 1rem;
+  margin-top: 0.85rem;
+}
+
+
 
 

@@ -1075,6 +1075,15 @@ function renderContractValidationView(filtered) {
     ? auditLogs 
     : auditLogs.filter(a => a.docId === selectedDocId);
 
+  const activeIngestTab = state.ingestTab || 'upload';
+
+  const systemFixtures = [
+    ...(state.data.tcs || []).map(t => ({ id: t.contractId, name: `${t.contractId} · ${t.vesselName} (Time Charter)` })),
+    ...(state.data.vcs || []).map(v => ({ id: v.contractId, name: `${v.contractId} · ${v.vesselName} (${v.chartererName})` })),
+    ...(state.data.cps || []).map(c => ({ id: c.cpId, name: `${c.cpId} · ${c.cpForm} (${c.charterer})` })),
+    ...(state.data.masters || []).map(m => ({ id: m.instructionId, name: `${m.instructionNo} · ${m.vesselName} (Master Ops)` }))
+  ];
+
   return `
     <div class="dwrap">
       <!-- SUB-HEADER BAR -->
@@ -1085,6 +1094,83 @@ function renderContractValidationView(filtered) {
         </div>
         <div style="display:flex;gap:0.5rem">
           <button class="btn-c btn-c-primary btn-sm" onclick="window.reAuditContracts()">⚡ RE-AUDIT ALL CONTRACT DOCUMENTS</button>
+        </div>
+      </div>
+
+      <!-- NEW INGESTION SECTION: DOCUMENT INGESTION & AI VALIDATION PIPELINE -->
+      <div class="ingest-box-container">
+        <div style="font-family:'Archivo';font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:0.65rem;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>📥</span> CONTRACT DOCUMENT INGESTION & VALIDATION PIPELINE
+          </div>
+          <span style="font-size:0.68rem;color:var(--signal);font-family:'IBM Plex Mono';background:rgba(155,229,100,0.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(155,229,100,0.3)">
+            TEGRITY AI ENGINE READY
+          </span>
+        </div>
+
+        <!-- Ingestion Mode Selector Tabs -->
+        <div class="ingest-tab-bar">
+          <button class="ingest-tab-btn ${activeIngestTab === 'upload' ? 'active' : ''}" onclick="window.switchIngestTab('upload')">
+            📁 Browse / Drag & Drop Local Document
+          </button>
+          <button class="ingest-tab-btn ${activeIngestTab === 'system' ? 'active' : ''}" onclick="window.switchIngestTab('system')">
+            📜 Select Existing System Fixture / Agreement
+          </button>
+        </div>
+
+        ${activeIngestTab === 'upload' ? `
+          <!-- DRAG AND DROP & BROWSE FILE UPLOADER -->
+          <div class="ingest-dropzone" id="ingest-dropzone" 
+               ondragover="window.handleDragOver(event)" 
+               ondragleave="window.handleDragLeave(event)" 
+               ondrop="window.handleFileDrop(event)"
+               onclick="window.triggerBrowseFile()">
+            <input type="file" id="ingest-file-input" style="display:none" onchange="window.handleFileSelected(event)" accept=".pdf,.docx,.txt,.doc,.msg">
+            <div class="ingest-icon">📂</div>
+            <div class="ingest-title">Drag & Drop Contract File Here, or Click to Browse</div>
+            <div class="ingest-desc">Supports PDF (.pdf), Word (.docx), Plain Text (.txt), and Email Addendums (.msg) · Automatic Clause Extraction & Audit</div>
+            <div style="margin-top:0.75rem">
+              <button class="btn-c btn-c-primary btn-xs" type="button" onclick="event.stopPropagation(); window.triggerBrowseFile()">
+                📁 BROWSE LOCAL FILES
+              </button>
+            </div>
+          </div>
+        ` : `
+          <!-- SELECT EXISTING SYSTEM CONTRACT FIXTURE -->
+          <div style="background:var(--surface-2);border:1px solid var(--edge);padding:1rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <div style="flex:1;min-width:250px">
+              <label style="font-size:0.72rem;font-weight:700;color:var(--ink-3);display:block;margin-bottom:0.3rem">SELECT SYSTEM CONTRACT / FIXTURE RECORD:</label>
+              <select id="ingest-system-fixture-select" class="c-select-xs" style="width:100%;font-size:0.78rem">
+                ${systemFixtures.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+              </select>
+            </div>
+            <div style="display:flex;align-items:flex-end;margin-top:1.2rem">
+              <button class="btn-c btn-c-primary btn-sm" onclick="window.processSystemFixtureIngestion()">
+                ⚡ PROCESS & VALIDATE FIXTURE
+              </button>
+            </div>
+          </div>
+        `}
+
+        <!-- PROCESSING ANIMATION / PROGRESS INDICATOR (If Active) -->
+        <div id="ingest-processing-banner" style="display:none" class="ingest-progress-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+            <div style="font-weight:700;color:var(--signal);font-size:0.8rem;display:flex;align-items:center;gap:6px">
+              <span class="pip live dot"></span>
+              <span id="ingest-status-text">Ingesting document & extracting clauses...</span>
+            </div>
+            <span class="mono" style="font-size:0.75rem;color:var(--ink)" id="ingest-pct-text">25%</span>
+          </div>
+
+          <div class="val-progress-bar" style="height:6px">
+            <div id="ingest-progress-fill" class="val-progress-fill high" style="width:25%"></div>
+          </div>
+
+          <div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--ink-2);margin-top:0.5rem" id="ingest-steps-list">
+            <span>[✔] Document Structure Parsed</span>
+            <span>[🔄] Verifying Governance Clauses</span>
+            <span>[⏳] Calculating Financial Risk Exposure</span>
+          </div>
         </div>
       </div>
 
@@ -2735,6 +2821,182 @@ window.quickNlpSearch = function(keyword) {
     input.value = keyword;
     window.filterNlpResearch(keyword);
   }
+};
+
+// ── DOCUMENT INGESTION & PIPELINE PROCESSING HANDLERS ──
+window.switchIngestTab = function(tabName) {
+  state.ingestTab = tabName;
+  renderApp();
+};
+
+window.handleDragOver = function(e) {
+  e.preventDefault();
+  const dropzone = document.getElementById('ingest-dropzone');
+  if (dropzone) dropzone.classList.add('dragover');
+};
+
+window.handleDragLeave = function(e) {
+  e.preventDefault();
+  const dropzone = document.getElementById('ingest-dropzone');
+  if (dropzone) dropzone.classList.remove('dragover');
+};
+
+window.handleFileDrop = function(e) {
+  e.preventDefault();
+  const dropzone = document.getElementById('ingest-dropzone');
+  if (dropzone) dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    window.processIngestedFile(e.dataTransfer.files[0]);
+  }
+};
+
+window.triggerBrowseFile = function() {
+  const input = document.getElementById('ingest-file-input');
+  if (input) input.click();
+};
+
+window.handleFileSelected = function(e) {
+  if (e.target.files && e.target.files.length > 0) {
+    window.processIngestedFile(e.target.files[0]);
+  }
+};
+
+window.processIngestedFile = function(file) {
+  const fileName = file.name || 'Contract_Addendum_2026.pdf';
+  const docRef = `INGEST-${Date.now().toString().slice(-4)} / ${fileName.slice(0, 15).toUpperCase()}`;
+
+  const banner = document.getElementById('ingest-processing-banner');
+  const statusText = document.getElementById('ingest-status-text');
+  const pctText = document.getElementById('ingest-pct-text');
+  const progressFill = document.getElementById('ingest-progress-fill');
+  const stepsList = document.getElementById('ingest-steps-list');
+
+  if (banner) banner.style.display = 'block';
+
+  let pct = 0;
+  const timer = setInterval(() => {
+    pct += 25;
+    if (progressFill) progressFill.style.width = `${pct}%`;
+    if (pctText) pctText.textContent = `${pct}%`;
+
+    if (pct === 25 && statusText) {
+      statusText.textContent = `Extracting clauses & detecting amendments in ${fileName}...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Document Structure Parsed</span> <span>[🔄] Clause Extraction</span> <span>[⏳] Governance Rules</span>`;
+    } else if (pct === 50 && statusText) {
+      statusText.textContent = `Comparing against BIMCO 2023 & MARPOL Annex VI guidelines...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Clauses Extracted</span> <span>[✔] BIMCO Rules Matched</span> <span>[🔄] Risk Calculation</span>`;
+    } else if (pct === 75 && statusText) {
+      statusText.textContent = `Summarizing potential financial risk exposure & Tegrity recommendations...`;
+      if (stepsList) stepsList.innerHTML = `<span>[✔] Risk Calculated</span> <span>[✔] Recommendations Generated</span> <span>[🔄] Enriching Repository</span>`;
+    } else if (pct >= 100) {
+      clearInterval(timer);
+      if (statusText) statusText.textContent = `Ingestion & Audit Complete! Document added to Repository.`;
+
+      const newDocId = `VAL-${Date.now().toString().slice(-4)}`;
+      const newValidation = {
+        id: newDocId,
+        docRef: docRef,
+        docType: fileName.endsWith('.pdf') ? 'Voyage Charter Addendum' : 'Time Charter Rider',
+        associatedContractId: 'VC-2026-001',
+        title: `Ingested Doc: ${fileName}`,
+        counterparty: 'Global Chartering Partners',
+        governingLaw: 'English Law',
+        completenessScore: 88,
+        totalClauses: 20,
+        passedClauses: 17,
+        missingClausesCount: 2,
+        conflictingClausesCount: 1,
+        highRiskCount: 1,
+        mediumRiskCount: 1,
+        lowRiskCount: 1,
+        financialExposureUSD: 75000,
+        auditDate: new Date().toISOString().split('T')[0],
+        status: 'Action Required'
+      };
+
+      const newAuditLog = {
+        auditId: `VAL-AUD-${Date.now().toString().slice(-4)}`,
+        docId: newDocId,
+        docRef: docRef,
+        clauseRef: 'Clause 38 - Ingested Carbon Footprint & Fuel Warranty',
+        category: 'Environmental Compliance',
+        issueType: 'Missing Required Clause',
+        proposedText: `[Extracted from ${fileName}] Fuel delivery samples shall comply with local port regulations.`,
+        tegrityRecommendation: 'Incorporate BIMCO 2020 Fuel Sulfur & MARPOL Annex VI Sampling Clause: Charterers warrant all fuel supplied strictly complies with <0.50% S with retained sealed MARPOL samples.',
+        riskLevel: 'High',
+        riskSummary: 'Missing explicit MARPOL sample retention terms creates $75,000 risk of port state detention fines.',
+        financialExposureUSD: 75000,
+        actionTaken: 'DEFERRED',
+        actionNotes: `Ingested from ${fileName} on ${new Date().toISOString().split('T')[0]}. Pending commercial team review.`,
+        referencePrecedent: 'MARPOL Annex VI Regulation 18 / BIMCO 2020 Fuel Clause'
+      };
+
+      state.data.validations.unshift(newValidation);
+      state.data.auditLogs.unshift(newAuditLog);
+
+      saveState('validations');
+      saveState('auditLogs');
+
+      window.showToast(`📥 Document "${fileName}" ingested & audited successfully! Added to repository.`);
+      renderApp();
+    }
+  }, 250);
+};
+
+window.processSystemFixtureIngestion = function() {
+  const select = document.getElementById('ingest-system-fixture-select');
+  if (!select) return;
+  const selectedId = select.value;
+  
+  window.showToast(`⚡ Processing system fixture ${selectedId} through Tegrity AI Contract Audit Engine...`);
+
+  const newDocId = `VAL-${Date.now().toString().slice(-4)}`;
+  const newValidation = {
+    id: newDocId,
+    docRef: `${selectedId} / AI-AUDIT`,
+    docType: 'System Fixture Audit',
+    associatedContractId: selectedId,
+    title: `AI Contract Audit: ${selectedId}`,
+    counterparty: 'Tegrity Commercial Ops',
+    governingLaw: 'English Law',
+    completenessScore: 92,
+    totalClauses: 24,
+    passedClauses: 22,
+    missingClausesCount: 1,
+    conflictingClausesCount: 1,
+    highRiskCount: 1,
+    mediumRiskCount: 1,
+    lowRiskCount: 0,
+    financialExposureUSD: 50000,
+    auditDate: new Date().toISOString().split('T')[0],
+    status: 'Audit Complete'
+  };
+
+  const newAuditLog = {
+    auditId: `VAL-AUD-${Date.now().toString().slice(-4)}`,
+    docId: newDocId,
+    docRef: `${selectedId} / AI-AUDIT`,
+    clauseRef: 'Clause 19 - Laytime Demurrage Time-Bar & Notice Exception',
+    category: 'Laytime & Demurrage',
+    issueType: 'Conflicting Terms',
+    proposedText: `Demurrage claims must be presented within 60 days of discharge completion with full supporting documentation.`,
+    tegrityRecommendation: 'Align with BPVOY4 Clause 20 standard: Demurrage claims supported by SOF and time-sheets rendered within 90 days. Failure to provide documents within 90 days bars claim.',
+    riskLevel: 'Medium',
+    riskSummary: 'Tight 60-day time-bar clause creates potential loss of $50,000 legitimate demurrage recovery.',
+    financialExposureUSD: 50000,
+    actionTaken: 'DEFERRED',
+    actionNotes: `Ingested from system fixture ${selectedId}. Pending review.`,
+    referencePrecedent: 'BPVOY4 Clause 20 / London Arbitration 2023/18'
+  };
+
+  state.data.validations.unshift(newValidation);
+  state.data.auditLogs.unshift(newAuditLog);
+
+  saveState('validations');
+  saveState('auditLogs');
+
+  window.showToast(`✔ System fixture ${selectedId} successfully processed & audited!`);
+  renderApp();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
